@@ -1,6 +1,6 @@
 'use strict';
 const PADDING = 10;
-const THICKNESS = 40;
+const THICKNESS = 48;
 const SNAP_DISTANCE = 32;
 const SCALES = [0.6, 0.72, 0.84];
 const EDGES = ['top', 'left', 'right', 'bottom', 'free'];

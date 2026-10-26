@@ -1,6 +1,15 @@
 'use strict';
 (() => {
   const api = window.touchbar;
+  const aiView = window.aiToolsView;
+  const aiPanel = document.querySelector('#ai-panel');
+  const aiButton = document.querySelector('#ai-button');
+  let aiOpen = false;
+  let musicOpen = false;
+  const musicView = window.musicView;
+  const musicButton = document.querySelector('#music-button');
+  let aiStatusTimer;
+  let aiStatusPending = false;
   const components = document.querySelector('#components');
   const componentTrack = document.querySelector('.component-track');
   const adjustmentButtons = [...document.querySelectorAll('[data-adjust]')];
@@ -111,7 +120,22 @@
     brightnessButton.setAttribute('aria-expanded', String(mode === 'brightness'));
     volumeButton.setAttribute('aria-expanded', String(mode === 'volume'));
     document.body.dataset.expanded = String(expanded);
-    components.hidden = !expanded || mode !== null;
+    components.hidden = !expanded || mode !== null || aiOpen || musicOpen;
+    // The same buttons keep their handlers and status badges in both locations.
+    // Only the component browser scrolls them; detail panels retain navigation.
+    const inComponentList = !components.hidden;
+    if (inComponentList && aiButton.parentElement !== componentTrack) {
+      componentTrack.prepend(aiButton, musicButton);
+    } else if (!inComponentList && aiButton.parentElement === componentTrack) {
+      expandButton.after(aiButton, musicButton);
+    }
+    aiButton.classList.toggle('component', inComponentList);
+    musicButton.classList.toggle('component', inComponentList);
+    document.body.dataset.musicOpen = String(musicOpen);
+    musicButton.setAttribute('aria-expanded', String(musicOpen));
+    musicView?.show(!mode && !aiOpen && (!expanded || musicOpen), musicOpen);
+    document.body.dataset.aiOpen = String(aiOpen);
+    aiButton.setAttribute('aria-expanded', String(aiOpen));
     expandButton.setAttribute('aria-expanded', String(expanded));
     expandButton.setAttribute('aria-label', expanded ? '收起组件' : '展开组件');
     expandButton.title = expanded ? '收起组件 · 滚轮浏览组件' : '展开组件';
@@ -162,6 +186,8 @@
   }
 
   function open(nextMode) {
+    musicOpen = false;
+    if (aiOpen) closeAi();
     wheelRoute = null;
     pointerEditing = false;
     editingValue = null;
@@ -223,6 +249,7 @@
         delete button.dataset.wheelValue;
       }
       // Wheel errors must be visible even when the inline panel was closed.
+      if (aiOpen) closeAi();
       mode = request.kind === 'muted' ? 'volume' : request.kind;
       render();
     } finally {
@@ -269,12 +296,14 @@
   });
   closeButton.addEventListener('click', () => open(null));
   function escape() {
+    if (musicOpen) { musicOpen = false; render(); return; }
+    if (aiOpen) { aiView.back(); return; }
     if (mode) open(null);
     else { expanded = false; render(); }
   }
   escapeButton.addEventListener('click', escape);
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && (mode || expanded)) { event.preventDefault(); escape(); }
+    if (event.key === 'Escape' && (mode || expanded || aiOpen || musicOpen)) { event.preventDefault(); escape(); }
   });
   function toggleMute() {
     if (!state.audio.available || loading) return;
@@ -359,7 +388,7 @@
   }
 
   function browseComponents(event) {
-    if (!expanded || mode || components.hidden) return;
+    if (!expanded || mode || aiOpen || components.hidden) return;
     event.preventDefault();
     const vertical = document.body.dataset.orientation === 'vertical';
     const primary = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
@@ -377,6 +406,7 @@
       wheelRoute = null;
   });
   document.querySelector('.touch-bar').addEventListener('wheel', event => {
+    if (aiOpen && aiPanel.contains(event.target)) { wheelRoute = null; return; }
     if (event.ctrlKey || event.metaKey || event.altKey) { wheelRoute = null; return; }
     const now = performance.now();
     const moved = wheelRoute && Math.hypot(event.clientX - wheelRoute.x, event.clientY - wheelRoute.y) >= 3;
@@ -411,6 +441,62 @@
   componentTrack.addEventListener('focusin', event => {
     if (expanded && !mode) event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   });
+
+
+  function updateAiBadge(next) {
+    const now = Date.now();
+    const limited = (next?.tools || []).filter(tool => {
+      const quota = tool.quota;
+      return quota && Number.isFinite(quota.usedPercent) && quota.usedPercent >= 80 &&
+        Number.isFinite(Date.parse(quota.updatedAt)) && now - Date.parse(quota.updatedAt) >= -60000 && now - Date.parse(quota.updatedAt) <= 15 * 60000 &&
+        (!quota.resetAt || Date.parse(quota.resetAt) > now);
+    });
+    aiButton.querySelector('.ai-alert-dot').hidden = limited.length === 0;
+    aiButton.dataset.alert = limited.some(tool => tool.quota.usedPercent >= 95) ? 'critical' : limited.length ? 'low' : '';
+    aiButton.title = limited.length
+      ? '额度提醒：' + limited.map(tool => tool.name + ' 剩余 ' + Math.round(tool.quota.remainingPercent) + '%').join('；')
+      : 'AI 工具：本机状态与 Token 活动';
+  }
+
+  function openMusic() {
+    open(null);
+    musicOpen = true;
+    render();
+  }
+  musicView?.mount(document.querySelector('#music-panel'), {
+    onOpen: openMusic,
+    onClose: () => { musicOpen = false; render(); },
+  });
+  musicButton.addEventListener('click', () => {
+    if (musicOpen) { musicOpen = false; render(); }
+    else openMusic();
+  });
+
+  function closeAi() {
+    aiOpen = false;
+    aiView?.close();
+    wheelRoute = null;
+    render();
+  }
+  aiView?.mount(aiPanel, { onClose: closeAi, onState: updateAiBadge });
+  aiButton.addEventListener('click', () => {
+    if (aiOpen) { closeAi(); return; }
+    open(null);
+    aiOpen = true;
+    render();
+    aiView?.open();
+  });
+  // Background reminders only read the backend's local, cached snapshot.
+  async function refreshAiBadge() {
+    if (!aiOpen && !aiStatusPending && typeof api?.getAIState === 'function') {
+      aiStatusPending = true;
+      try { updateAiBadge(await api.getAIState()); } catch { updateAiBadge(null); }
+      finally { aiStatusPending = false; }
+    }
+    aiStatusTimer = setTimeout(refreshAiBadge, 60000);
+  }
+  aiStatusTimer = setTimeout(refreshAiBadge, 3000);
+  window.addEventListener('beforeunload', () => { clearTimeout(aiStatusTimer); aiView?.close(); musicView?.dispose(); });
 
   // Initialization and external system updates are strictly read-only.
   if (api) {

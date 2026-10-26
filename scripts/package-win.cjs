@@ -12,6 +12,7 @@ const args = [
   "--x64",
   "--publish",
   "never",
+  ...(process.argv.includes("--local") ? ["--config.directories.output=" + path.join(__dirname, "../release-local")] : []),
   "--config.electronDist=" + dist,
   "--config.afterPack=" + path.join(__dirname, "after-pack.cjs"),
 ];

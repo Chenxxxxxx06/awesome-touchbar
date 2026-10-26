@@ -21,7 +21,7 @@ test('geometry uses each display dimension and requested ratio', () => {
         const available = vertical ? height : width;
         const expected = Math.round(Math.min(available - 32, Math.max(vertical ? 320 : 480, available * scale)));
         assert.equal(vertical ? size.height : size.width, expected + 20);
-        assert.equal(vertical ? size.width : size.height, 60);
+        assert.equal(vertical ? size.width : size.height, 68);
       }
     }
   }
@@ -53,14 +53,14 @@ test('saved free coordinates are respected and constrained', () => {
 
 test('snap threshold and orientation-specific corner priority', () => {
   const area = { x: -1920, y: 0, width: 1920, height: 1080 };
-  const bounds = { x: area.x + 32, y: 200, width: 500, height: 60 };
+  const bounds = { x: area.x + 32, y: 200, width: 500, height: 68 };
   assert.equal(edgeAfterMove(bounds, area, 'horizontal'), 'left');
   assert.equal(edgeAfterMove({ ...bounds, x: area.x + 33 }, area, 'horizontal'), 'free');
   const corner = { ...bounds, x: area.x, y: area.y };
   assert.equal(edgeAfterMove(corner, area, 'horizontal'), 'left');
   assert.equal(edgeAfterMove(corner, area, 'vertical'), 'top');
   assert.equal(edgeAfterMove({ ...bounds, x: area.x + area.width - 500 }, area, 'horizontal'), 'right');
-  assert.equal(edgeAfterMove({ ...bounds, x: area.x + 400, y: 1020 }, area, 'vertical'), 'bottom');
+  assert.equal(edgeAfterMove({ ...bounds, x: area.x + 400, y: 1004 }, area, 'vertical'), 'bottom');
 });
 
 test('public layout excludes coordinates and display identifiers', () => {

@@ -1,14 +1,20 @@
 'use strict';
-const { app, BrowserWindow, Menu, screen, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, screen, ipcMain, dialog, net } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { normalizeLayout, place, edgeAfterMove, publicLayout } = require('./layout.cjs');
 const { createControls, CONTROL_ACTIONS } = require('./controls.cjs');
+const { createAiTools } = require('./ai-tools.cjs');
+const { createMusic } = require('./music.cjs');
+const { createLyrics } = require('./lyrics.cjs');
 app.setName('Touch Bar');
 app.setAppUserModelId('local.touchbar.preview');
 if (process.env.TOUCH_BAR_DATA_DIR) app.setPath('userData', path.resolve(process.env.TOUCH_BAR_DATA_DIR));
 let bar;
 let controls;
+let aiTools;
+let music;
+let lyrics;
 let layout = normalizeLayout();
 let dragging = false;
 let applyingBounds = false;
@@ -126,6 +132,31 @@ else {
     const fromBar = event => {
       if (!bar || bar.isDestroyed() || event.sender !== bar.webContents) throw new Error('Unknown window');
     };
+    aiTools = createAiTools();
+    music = createMusic();
+    lyrics = createLyrics({ directory: path.join(app.getPath('userData'), 'music-lyrics'), mock: music.mode === 'mock', fetch: (url, options) => net.fetch(String(url), options) });
+    const findTrack = async token => {
+      if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw new Error('Invalid song');
+      const state = await music.getState();
+      const matching = state.sessions.filter(track => track.token === token);
+      if (matching.length !== 1) throw new Error('Song changed');
+      return matching[0];
+    };
+    ipcMain.handle('music:state', event => { fromBar(event); return music.getState(); });
+    ipcMain.handle('music:seek', (event, token, seconds) => { fromBar(event); return music.seek(token, seconds); });
+    ipcMain.handle('music:lyrics', async (event, token) => { fromBar(event); return lyrics.load(await findTrack(token)); });
+    ipcMain.handle('music:import', async (event, token) => {
+      fromBar(event);
+      const track = await findTrack(token);
+      if (music.mode === 'mock') return null;
+      const selected = await dialog.showOpenDialog(bar, { title: '导入当前歌曲的同步歌词', properties: ['openFile'], filters: [{ name: 'LRC 歌词', extensions: ['lrc'] }] });
+      if (selected.canceled || selected.filePaths.length !== 1) return null;
+      const file = selected.filePaths[0];
+      if (path.extname(file).toLowerCase() !== '.lrc' || (await fs.promises.stat(file)).size > 1024 * 1024) throw new Error('Invalid LRC file');
+      await findTrack(token);
+      return lyrics.import(track, await fs.promises.readFile(file, 'utf8'));
+    });
+    ipcMain.handle('ai:state', event => { fromBar(event); return aiTools.getState(); });
     ipcMain.handle('controls:get', event => { fromBar(event); return controls.getState(); });
     ipcMain.handle('controls:action', (event, action) => {
       fromBar(event);
@@ -169,5 +200,5 @@ else {
     screen.on('display-added', adaptDisplay);
   });
 }
-app.on('before-quit', () => { persist(); controls?.dispose(); });
+app.on('before-quit', () => { persist(); controls?.dispose(); aiTools?.dispose(); music?.dispose(); lyrics?.dispose(); });
 app.on('window-all-closed', () => app.quit());

@@ -10,3 +10,5 @@ Thumbs.db
 
 native/bin/
 docs/*.png
+
+release-local/

@@ -1,6 +1,11 @@
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('touchbar', {
+  getMusicState: () => ipcRenderer.invoke('music:state'),
+  seekMusic: (token, seconds) => ipcRenderer.invoke('music:seek', token, seconds),
+  getMusicLyrics: token => ipcRenderer.invoke('music:lyrics', token),
+  importMusicLyrics: token => ipcRenderer.invoke('music:import', token),
+  getAIState: () => ipcRenderer.invoke('ai:state'),
   getControls: () => ipcRenderer.invoke('controls:get'),
   runAction: action => ipcRenderer.invoke('controls:action', action),
   setVolume: (value, deviceId) => ipcRenderer.invoke('controls:volume', value, deviceId),
