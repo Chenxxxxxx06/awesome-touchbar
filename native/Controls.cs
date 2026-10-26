@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Diagnostics;
+using System.Threading;
 using System.Management;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -110,10 +112,10 @@ internal static class Program
         return new { audio = audioState, brightness = brightnessCache };
     }
 
-    private static ManagementObjectSearcher Search(string query)
+    private static ManagementObjectSearcher Search(string query, int timeoutMilliseconds = 2000)
     {
         return new ManagementObjectSearcher(new ManagementScope(@"\\.\root\wmi"), new ObjectQuery(query),
-            new EnumerationOptions { Timeout = TimeSpan.FromSeconds(2), ReturnImmediately = false });
+            new EnumerationOptions { Timeout = TimeSpan.FromMilliseconds(timeoutMilliseconds), ReturnImmediately = false });
     }
 
     private static Dictionary<string, object> ReadBrightness()
@@ -147,6 +149,28 @@ internal static class Program
     private static Dictionary<string, object> UnavailableBrightness(string error)
     {
         return new Dictionary<string, object> { { "available", false }, { "value", null }, { "error", error } };
+    }
+
+    private static int? ReadBrightnessValue(string instance, int timeoutMilliseconds)
+    {
+        using (var searcher = Search("SELECT * FROM WmiMonitorBrightness WHERE Active = TRUE", timeoutMilliseconds))
+        using (var collection = searcher.Get())
+        {
+            foreach (ManagementObject monitor in collection)
+            {
+                using (monitor)
+                {
+                    if (String.Equals(instance, Convert.ToString(monitor["InstanceName"], CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase))
+                    {
+                        object value = monitor["CurrentBrightness"];
+                        if (value == null) return null;
+                        int observed = Convert.ToInt32(value, CultureInfo.InvariantCulture);
+                        return observed >= 0 && observed <= 100 ? (int?)observed : null;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private static void SetBrightness(double value)
@@ -186,11 +210,20 @@ internal static class Program
                     {
                         arguments["Timeout"] = (uint)0;
                         arguments["Brightness"] = target;
+                        object returnValue = null;
                         using (var result = monitor.InvokeMethod("WmiSetBrightness", arguments, new InvokeMethodOptions { Timeout = TimeSpan.FromSeconds(2) }))
                         {
-                            if (result == null || Convert.ToUInt32(result["ReturnValue"]) != 0)
-                                throw new InvalidOperationException("屏幕未接受亮度设置");
+                            // Some Windows providers expose no output parameters and return null.
+                            if (result != null)
+                                foreach (PropertyData property in result.Properties)
+                                    if (String.Equals(property.Name, "ReturnValue", StringComparison.OrdinalIgnoreCase))
+                                        returnValue = property.Value;
                         }
+                        brightnessCache = null;
+                        // The same display's reported brightness is authoritative, even when
+                        // a provider's undocumented return type differs from the SDK sample.
+                        BrightnessVerification.Confirm(target, returnValue,
+                            timeout => ReadBrightnessValue(instance, timeout), Thread.Sleep);
                     }
                     brightnessCache = null;
                     return;
@@ -198,6 +231,41 @@ internal static class Program
             }
         }
         throw new InvalidOperationException("当前屏幕不支持内屏亮度调节");
+    }
+}
+
+// Pure verification policy, separated so tests never need to invoke a real setter.
+internal static class BrightnessVerification
+{
+    internal static bool IsExplicitFailure(object value)
+    {
+        if (value == null) return false;
+        if (value is bool) return !(bool)value;
+        if (value is byte || value is sbyte || value is short || value is ushort ||
+            value is int || value is uint || value is long || value is ulong ||
+            value is float || value is double || value is decimal)
+            return Convert.ToDouble(value, CultureInfo.InvariantCulture) != 0;
+        return false;
+    }
+
+    internal static void Confirm(byte target, object returnValue, Func<int, int?> read, Action<int> wait)
+    {
+        var clock = Stopwatch.StartNew();
+        foreach (int delay in new int[] { 0, 50, 100, 200 })
+        {
+            int remaining = 900 - (int)clock.ElapsedMilliseconds;
+            if (remaining <= delay) break;
+            if (delay > 0) wait(delay);
+            remaining = 900 - (int)clock.ElapsedMilliseconds;
+            if (remaining <= 0) break;
+            int? observed = null;
+            try { observed = read(Math.Min(remaining, 200)); }
+            catch { /* A brief driver read failure can settle on the next bounded read. */ }
+            if (observed.HasValue && observed.Value == target) return;
+        }
+        if (IsExplicitFailure(returnValue))
+            throw new InvalidOperationException("屏幕未接受亮度设置，当前亮度未达到目标");
+        throw new InvalidOperationException("亮度未生效，请重试");
     }
 }
 

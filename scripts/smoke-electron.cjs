@@ -11,6 +11,7 @@ const screenshot = {
   horizontal: path.join(output, 'touchbar-horizontal.png'),
   vertical: path.join(output, 'touchbar-vertical.png'),
   slider: path.join(output, 'touchbar-slider.png'),
+  verticalError: path.join(output, 'touchbar-vertical-error.png'),
 };
 const errors = [];
 (async () => {
@@ -60,7 +61,7 @@ const errors = [];
   try {
     fs.mkdirSync(output, { recursive: true });
     await launch();
-    await expect(page.locator('button')).toHaveCount(6);
+    await expect(page.locator('button')).toHaveCount(7);
     await expect(page.locator('#adjustment')).toBeHidden();
     await expect(page.getByRole('button', { name: /Siri/i })).toHaveCount(0);
     const layout = await page.evaluate(() => window.touchbar.getLayout());
@@ -117,7 +118,8 @@ const errors = [];
     await page.locator('#mute-button').click();
     await expect.poll(() => page.evaluate(async () => (await window.touchbar.getControls()).audio.muted)).toBe(true);
     await expect(page.locator('#mute-button')).toHaveAttribute('aria-label', '取消静音');
-    assert.equal(await page.locator('.volume-cross').getAttribute('hidden'), null);
+    await expect(page.locator('.volume-cross')).toHaveCount(0);
+    assert.equal(await page.locator('.volume-waves').getAttribute('hidden'), null, 'volume remains distinct from mute');
     await page.locator('#mute-button').click();
     await expect.poll(() => page.evaluate(async () => (await window.touchbar.getControls()).audio.muted)).toBe(false);
     // External updates render without issuing a write back to the mock endpoint.
@@ -175,6 +177,30 @@ const errors = [];
     await page.mouse.click(verticalTrack.x + verticalTrack.width / 2, verticalTrack.y + verticalTrack.height * .75);
     await expect.poll(() => page.evaluate(async () => (await window.touchbar.getControls()).audio.volume)).toBeLessThan(35);
     await page.screenshot({ path: screenshot.vertical, omitBackground: true, animations: 'disabled' });
+    await page.locator('.close-adjustment').click();
+    // An injected failure in this mock-only app must offer a read-only retry.
+    await app.evaluate(({ ipcMain }) => {
+      globalThis.__brightnessAttempts = 0;
+      ipcMain.removeHandler('controls:brightness');
+      ipcMain.handle('controls:brightness', () => { globalThis.__brightnessAttempts++; throw new Error('Simulated device failure'); });
+    });
+    await page.locator('#brightness-button').click();
+    await range.focus();
+    await range.press('ArrowDown');
+    await expect(page.locator('.retry-control')).toBeVisible();
+    await expect(page.locator('.retry-control')).toBeEnabled();
+    await expect(range).toBeVisible();
+    await expect(range).toBeDisabled();
+    const retryBox = await page.locator('.retry-control').boundingBox();
+    assert.ok(retryBox.width <= 28 && retryBox.height <= 38, 'vertical error stays compact');
+    await page.screenshot({ path: screenshot.verticalError, omitBackground: true, animations: 'disabled' });
+    const attempts = await app.evaluate(() => globalThis.__brightnessAttempts);
+    assert.equal(attempts, 1);
+    await page.locator('.retry-control').click();
+    await expect(page.locator('.control-feedback')).toBeHidden();
+    await expect(range).toBeEnabled();
+    assert.equal(await app.evaluate(() => globalThis.__brightnessAttempts), attempts, 'retry reads state without repeating the failed write');
+    await expect(range).toHaveValue('59');
     await page.locator('.close-adjustment').click();
     await move('right');
     await move('free');

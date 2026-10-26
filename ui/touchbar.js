@@ -6,6 +6,8 @@
   const output = document.querySelector('#adjustment-value');
   const sliderControls = document.querySelector('.slider-controls');
   const status = document.querySelector('.control-status');
+  const feedback = document.querySelector('.control-feedback');
+  const retryButton = document.querySelector('.retry-control');
   const brightnessButton = document.querySelector('#brightness-button');
   const volumeButton = document.querySelector('#volume-button');
   const muteButton = document.querySelector('#mute-button');
@@ -14,6 +16,8 @@
   const escapeButton = document.querySelector('.escape');
   let state = { audio: { available: false, volume: null, muted: null, deviceId: null }, brightness: { available: false, value: null } };
   let loading = true;
+  let refreshing = false;
+  const lastKnown = { volume: null, brightness: null };
   let mode = null;
   let lastMode = 'volume';
   let pointerEditing = false;
@@ -71,6 +75,8 @@
       audio: { available: audio.available === true && deviceId !== null && validPercent(audio.volume) && typeof audio.muted === 'boolean', volume: validPercent(audio.volume) ? audio.volume : null, muted: typeof audio.muted === 'boolean' ? audio.muted : null, deviceId },
       brightness: { available: brightness.available === true && validPercent(brightness.value), value: validPercent(brightness.value) ? brightness.value : null },
     };
+    if (state.audio.available) lastKnown.volume = state.audio.volume;
+    if (state.brightness.available) lastKnown.brightness = state.brightness.value;
     loading = false;
     render();
   }
@@ -87,10 +93,9 @@
     muteButton.setAttribute('aria-pressed', String(muted === true));
     muteButton.setAttribute('aria-label', muted === true ? '取消静音' : '静音');
     muteButton.title = state.audio.available ? (muted ? '取消静音' : '静音') : (loading ? '正在读取音量' : '没有可用的音频设备');
-    document.querySelector('.volume-waves').toggleAttribute('hidden', muted === true);
-    document.querySelector('.volume-cross').toggleAttribute('hidden', muted !== true);
+    // The entry always means volume; the separate mute key alone shows mute state.
     brightnessButton.title = loading ? '正在读取亮度' : (state.brightness.available ? '亮度' : '此屏幕暂不支持亮度调节');
-    volumeButton.title = state.audio.available ? '音量' : (loading ? '正在读取音量' : '没有可用的音频设备');
+    volumeButton.title = state.audio.available ? (muted ? '音量（当前静音）' : '音量') : (loading ? '正在读取音量' : '没有可用的音频设备');
     brightnessButton.setAttribute('aria-expanded', String(mode === 'brightness'));
     volumeButton.setAttribute('aria-expanded', String(mode === 'volume'));
     expandButton.setAttribute('aria-expanded', String(mode !== null));
@@ -106,19 +111,24 @@
     const available = mode === 'volume' ? state.audio.available : state.brightness.available;
     const error = errors[mode] || (mode === 'volume' && errors.muted);
     const deviceChanged = mode === 'volume' && audioNeedsGesture;
-    const message = loading ? '读取中…' : !available ? (mode === 'brightness' ? '此屏幕暂不支持亮度调节' : '没有可用的音频设备') : deviceChanged ? '音频设备已切换，请重新调节' : error ? '调节失败，请重试' : '';
-    status.hidden = message === '';
+    const message = loading || refreshing ? '读取中…' : !available ? (mode === 'brightness' ? '此屏幕暂不支持亮度调节' : '没有可用的音频设备') : deviceChanged ? '音频设备已切换，请重新调节' : error ? '调节失败，请重试' : '';
+    feedback.hidden = message === '';
+    panel.dataset.status = String(message !== '');
     status.textContent = message;
     status.title = message;
-    sliderControls.hidden = message !== '';
-    slider.disabled = loading || !available || !!error || deviceChanged;
-    let value = desired[mode] ?? (mode === 'volume' ? state.audio.volume : state.brightness.value);
+    retryButton.title = message ? message + '；点击重新读取状态' : '重新读取状态';
+    retryButton.setAttribute('aria-label', retryButton.title);
+    retryButton.disabled = loading || refreshing || sending;
+    retryButton.querySelector('.retry-label').textContent = loading || refreshing ? '稍候' : '重试';
+    sliderControls.hidden = !available && !validPercent(lastKnown[mode]);
+    slider.disabled = loading || refreshing || !available || !!error || deviceChanged;
+    let value = desired[mode] ?? (mode === 'volume' ? state.audio.volume : state.brightness.value) ?? lastKnown[mode];
     if (pointerEditing && editingValue !== null) value = editingValue;
     if (!validPercent(value)) value = 0;
     value = Math.round(value);
     slider.value = String(value);
     slider.style.setProperty('--level', value + '%');
-    slider.setAttribute('aria-valuetext', value + '%');
+    slider.setAttribute('aria-valuetext', (!available || error ? '上次读取到 ' : '') + value + '%');
     output.value = value + '%';
   }
 
@@ -183,9 +193,37 @@
       render();
     } finally {
       sending = false;
+      render();
       if (queued.length) queueTimer = setTimeout(flushQueue, 60);
     }
   }
+
+  async function refreshControls() {
+    if (refreshing || sending || !api || typeof api.getControls !== 'function') return;
+    // Retry means read again, never replay failed or queued setting changes.
+    clearTimeout(queueTimer);
+    queueTimer = undefined;
+    queued.length = 0;
+    for (const key of Object.keys(desired)) delete desired[key];
+    pointerEditing = false;
+    editingValue = null;
+    refreshing = true;
+    render();
+    const revision = stateRevision;
+    try {
+      const next = await api.getControls();
+      if (revision === stateRevision) acceptState(next);
+      for (const key of Object.keys(errors)) delete errors[key];
+      if (state.audio.available) audioNeedsGesture = false;
+    } catch {
+      loading = false;
+      if (mode) errors[mode] = true;
+    } finally {
+      refreshing = false;
+      render();
+    }
+  }
+  retryButton.addEventListener('click', refreshControls);
 
   brightnessButton.addEventListener('click', () => open(mode === 'brightness' ? null : 'brightness'));
   volumeButton.addEventListener('click', () => open(mode === 'volume' ? null : 'volume'));

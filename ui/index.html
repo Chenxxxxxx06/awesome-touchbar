@@ -20,13 +20,16 @@
         <input id="adjustment-slider" type="range" min="0" max="100" step="1" value="0" aria-label="音量" aria-orientation="horizontal" disabled>
         <output id="adjustment-value" for="adjustment-slider" aria-hidden="true">0%</output>
       </div>
-      <span class="control-status" role="status" aria-live="polite" hidden></span>
+      <div class="control-feedback" hidden>
+        <span class="control-status" role="status" aria-live="polite"></span>
+        <button class="retry-control" type="button" aria-label="重新读取状态"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 8a6.2 6.2 0 1 0 .1 4M16 4v4h-4"/></svg><span class="retry-label">重试</span></button>
+      </div>
     </section>
   </div>
   <div class="control-strip" role="group" aria-label="系统控制">
     <button class="expand" type="button" aria-label="展开调节" aria-expanded="false" aria-controls="adjustment"><svg viewBox="0 0 12 20" aria-hidden="true"><path d="m8 4-5 6 5 6"/></svg></button>
     <button id="brightness-button" class="key control" type="button" aria-label="亮度" aria-expanded="false" aria-controls="adjustment"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.7"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
-    <button id="volume-button" class="key control" type="button" aria-label="音量" aria-expanded="false" aria-controls="adjustment"><svg viewBox="0 0 26 24" aria-hidden="true"><path class="speaker" d="M3 9h4l5-4v14l-5-4H3Z"/><path class="volume-waves" d="M16 8a6 6 0 0 1 0 8M19 5a10 10 0 0 1 0 14"/><path class="volume-cross" d="m17 9 6 6m0-6-6 6" hidden/></svg></button>
+    <button id="volume-button" class="key control" type="button" aria-label="音量" aria-expanded="false" aria-controls="adjustment"><svg viewBox="0 0 26 24" aria-hidden="true"><path class="speaker" d="M3 9h4l5-4v14l-5-4H3Z"/><path class="volume-waves" d="M16 8a6 6 0 0 1 0 8M19 5a10 10 0 0 1 0 14"/></svg></button>
     <button id="mute-button" class="key control" type="button" aria-label="静音" aria-pressed="false" disabled><svg viewBox="0 0 26 24" aria-hidden="true"><path class="speaker" d="M3 9h4l5-4v14l-5-4H3Z"/><path d="m17 9 6 6m0-6-6 6"/></svg></button>
   </div>
 </main>
