@@ -1,0 +1,12 @@
+node_modules/
+release/
+.runtime/
+*.log
+.env
+.env.*
+.DS_Store
+Thumbs.db
+.pnpm-store/
+
+native/bin/
+docs/*.png
