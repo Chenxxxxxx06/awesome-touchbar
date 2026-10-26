@@ -4,6 +4,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
 const copy = value => JSON.parse(JSON.stringify(value));
+const CONTROL_ACTIONS = Object.freeze(['mediaPrevious', 'mediaPlayPause', 'mediaNext', 'showDesktop', 'taskView', 'openExplorer']);
+function actionName(value) {
+  if (typeof value !== 'string' || !CONTROL_ACTIONS.includes(value)) throw new TypeError('未知组件操作');
+  return value;
+}
 const unavailable = message => ({
   audio: { available: false, deviceId: null, volume: null, muted: null, error: message },
   brightness: { available: false, value: null, error: message },
@@ -169,6 +174,17 @@ function createControls(options = {}) {
       return publish(next);
     });
   }
+  async function runAction(value) {
+    assertOpen();
+    const action = actionName(value);
+    if (mode === 'readonly') throw new Error('READ_ONLY: 当前运行模式禁止修改系统设置');
+    return enqueue(async () => {
+      if (mode !== 'mock') return nativeRequest('runAction', action);
+      // Mock actions never launch a process or synthesize system input.
+      if (typeof options.onMockAction === 'function') options.onMockAction(action);
+      return copy(state);
+    });
+  }
   function dispose() {
     if (disposed) return;
     disposed = true;
@@ -188,6 +204,7 @@ function createControls(options = {}) {
   }
   return {
     getState,
+    runAction,
     setVolume: async (value, deviceId) => write('setVolume', percent(value), deviceId),
     setBrightness: async value => write('setBrightness', percent(value)),
     setMuted: async (value, deviceId) => {
@@ -197,4 +214,4 @@ function createControls(options = {}) {
     dispose,
   };
 }
-module.exports = { createControls };
+module.exports = { createControls, CONTROL_ACTIONS };

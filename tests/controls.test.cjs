@@ -184,3 +184,42 @@ test('mock also rejects stale device IDs without modifying its current state', a
   await assert.rejects(controls.setMuted(false, 'old-headphones'), /设备已变化/);
   assert.deepEqual(await controls.getState(), initial()); controls.dispose();
 });
+
+test('expanded actions are allowlisted and mock never synthesizes system input', async () => {
+  const { CONTROL_ACTIONS } = require('../desktop/controls.cjs');
+  let launches = 0;
+  const actions = [];
+  const controls = createControls({ mode: 'mock', mockState: initial(), spawn: () => { launches++; throw new Error('No real helper allowed'); }, onMockAction: action => actions.push(action) });
+  for (const action of CONTROL_ACTIONS) assert.deepEqual(await controls.runAction(action), initial());
+  assert.deepEqual(actions, CONTROL_ACTIONS);
+  assert.equal(launches, 0);
+  assert.deepEqual(await controls.getState(), initial());
+  for (const action of [null, undefined, true, 0, {}, [], '', 'volumeUp', 'powershell', 'mediaNext; exit', '__proto__'])
+    await assert.rejects(controls.runAction(action), /未知组件操作/);
+  assert.equal(actions.length, CONTROL_ACTIONS.length);
+  controls.dispose();
+  await assert.rejects(controls.runAction('openExplorer'), /已关闭/);
+});
+
+test('readonly or misspelled mode rejects actions before spawning a helper', async () => {
+  for (const mode of ['readonly', 'readolny']) {
+    const fake = fakeHelper();
+    const controls = createControls({ mode, spawn: fake.factory });
+    await assert.rejects(controls.runAction('mediaPlayPause'), /READ_ONLY/);
+    assert.equal(fake.launches, 0);
+    controls.dispose();
+  }
+});
+
+test('simulated native actions serialize through the fixed helper without shell arguments', async () => {
+  const fake = fakeHelper();
+  const controls = createControls({ mode: 'live', spawn: fake.factory, pollIntervalMs: 0 });
+  await assert.rejects(controls.runAction('calc.exe'), /未知组件操作/);
+  assert.equal(fake.launches, 0);
+  const results = await Promise.all([controls.runAction('showDesktop'), controls.runAction('mediaNext'), controls.getState()]);
+  assert.ok(results.every(state => state.audio.volume === 25 && state.audio.muted));
+  assert.equal(fake.maximum, 1);
+  assert.equal(fake.calls[0].options.shell, false);
+  assert.deepEqual(fake.calls.filter(call => call.op).map(call => [call.op, call.value]), [['runAction', 'showDesktop'], ['runAction', 'mediaNext'], ['get', undefined]]);
+  controls.dispose();
+});

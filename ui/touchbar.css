@@ -26,9 +26,10 @@ button:focus-visible { box-shadow: inset 0 0 0 1px #aaa; }
 button:disabled { color: #777; }
 .escape { width: 52px; flex: 0 0 52px; font-size: 12px; font-weight: 400; padding-bottom: 1px; letter-spacing: -.1px; }
 .empty-space { flex: 1; min-width: 20px; align-self: stretch; display: flex; align-items: center; justify-content: center; }
+.compact-controls { display: flex; align-items: center; gap: 6px; }
 .control-strip { display: flex; align-items: center; gap: 6px; height: 28px; }
 .control { width: 48px; flex: 0 0 48px; }
-.control svg, .adjustment-icon { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.control svg, .component svg, .adjustment-icon { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .speaker { fill: currentColor; stroke: none; }
 .expand { width: 20px; height: 28px; background: none; }
 .expand svg { width: 7px; height: 13px; fill: none; stroke: #d8d8d8; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
@@ -77,3 +78,27 @@ body[data-orientation="vertical"] .retry-label { display: block; white-space: no
 body[data-orientation="vertical"] .control-status { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @keyframes reveal { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* Expanded controls share the same slim shell; only their content scrolls. */
+.empty-space { min-width: 0; min-height: 0; overflow: hidden; }
+.control-strip { flex: 0 0 auto; }
+.expand { flex-shrink: 0; border-radius: 4px; }
+.expand:hover { background: #ffffff08; }
+.component-viewport { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: auto hidden; scrollbar-width: none; overscroll-behavior: contain; -webkit-app-region: no-drag; }
+.component-viewport::-webkit-scrollbar { display: none; }
+.component-track { display: flex; align-items: center; gap: 7px; width: max-content; min-width: 100%; height: 100%; }
+.component { flex: 1 0 52px; min-width: 52px; position: relative; }
+.solid-symbol { fill: currentColor; stroke: none; }
+.component[aria-busy="true"] { opacity: .6; }
+.component[data-failed="true"] { box-shadow: inset 0 0 0 1px #c99b68; }
+.drag-grip { display: none; flex: 0 0 6px; height: 18px; border-left: 2px dotted #7776; -webkit-app-region: drag; }
+body[data-expanded="true"] .drag-grip { display: block; }
+body[data-expanded="true"] .compact-controls { display: none; }
+button[data-wheel-value]::after { content: attr(data-wheel-value); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-variant-numeric: tabular-nums; background: inherit; border-radius: inherit; }
+.control { position: relative; }
+body[data-orientation="vertical"] .compact-controls { flex-direction: column; }
+body[data-orientation="vertical"] .component-viewport { overflow: hidden auto; }
+body[data-orientation="vertical"] .component-track { flex-direction: column; width: 100%; min-width: 0; height: max-content; min-height: 100%; }
+body[data-orientation="vertical"] .component { width: 28px; min-width: 0; min-height: 44px; flex: 1 0 44px; }
+body[data-orientation="vertical"] .drag-grip { width: 18px; height: 6px; border-left: 0; border-top: 2px dotted #7776; }
+body[data-orientation="vertical"] button[data-wheel-value]::after { font-size: 9px; }

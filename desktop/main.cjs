@@ -3,7 +3,7 @@ const { app, BrowserWindow, Menu, screen, ipcMain } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { normalizeLayout, place, edgeAfterMove, publicLayout } = require('./layout.cjs');
-const { createControls } = require('./controls.cjs');
+const { createControls, CONTROL_ACTIONS } = require('./controls.cjs');
 app.setName('Touch Bar');
 app.setAppUserModelId('local.touchbar.preview');
 if (process.env.TOUCH_BAR_DATA_DIR) app.setPath('userData', path.resolve(process.env.TOUCH_BAR_DATA_DIR));
@@ -127,6 +127,11 @@ else {
       if (!bar || bar.isDestroyed() || event.sender !== bar.webContents) throw new Error('Unknown window');
     };
     ipcMain.handle('controls:get', event => { fromBar(event); return controls.getState(); });
+    ipcMain.handle('controls:action', (event, action) => {
+      fromBar(event);
+      if (typeof action !== 'string' || !CONTROL_ACTIONS.includes(action)) throw new Error('Unknown widget action');
+      return controls.runAction(action);
+    });
     for (const [channel, method] of [['controls:volume', 'setVolume'], ['controls:brightness', 'setBrightness']]) {
       ipcMain.handle(channel, (event, value, deviceId) => {
         fromBar(event);

@@ -2,6 +2,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('touchbar', {
   getControls: () => ipcRenderer.invoke('controls:get'),
+  runAction: action => ipcRenderer.invoke('controls:action', action),
   setVolume: (value, deviceId) => ipcRenderer.invoke('controls:volume', value, deviceId),
   setBrightness: value => ipcRenderer.invoke('controls:brightness', value),
   setMuted: (value, deviceId) => ipcRenderer.invoke('controls:muted', value, deviceId),

@@ -1,6 +1,16 @@
 'use strict';
 (() => {
   const api = window.touchbar;
+  const components = document.querySelector('#components');
+  const componentTrack = document.querySelector('.component-track');
+  const adjustmentButtons = [...document.querySelectorAll('[data-adjust]')];
+  const muteButtons = [...document.querySelectorAll('[data-mute]')];
+  let expanded = false;
+  const wheelRemainder = { brightness: 0, volume: 0 };
+  let wheelKind = null;
+  let wheelTime = 0;
+  let wheelRoute = null;
+  const feedbackTimers = new WeakMap();
   const panel = document.querySelector('#adjustment');
   const slider = document.querySelector('#adjustment-slider');
   const output = document.querySelector('#adjustment-value');
@@ -19,7 +29,6 @@
   let refreshing = false;
   const lastKnown = { volume: null, brightness: null };
   let mode = null;
-  let lastMode = 'volume';
   let pointerEditing = false;
   let editingValue = null;
   let stateRevision = 0;
@@ -41,11 +50,14 @@
     document.body.dataset.orientation = vertical ? 'vertical' : 'horizontal';
     document.body.dataset.edge = layout.edge;
     slider.setAttribute('aria-orientation', vertical ? 'vertical' : 'horizontal');
+    components.scrollLeft = 0;
+    components.scrollTop = 0;
     render();
   }
 
   function invalidateAudio() {
     audioGeneration++;
+    wheelRemainder.volume = 0;
     for (let index = queued.length - 1; index >= 0; index--) {
       if (queued[index].kind !== 'brightness') queued.splice(index, 1);
     }
@@ -98,9 +110,26 @@
     volumeButton.title = state.audio.available ? (muted ? '音量（当前静音）' : '音量') : (loading ? '正在读取音量' : '没有可用的音频设备');
     brightnessButton.setAttribute('aria-expanded', String(mode === 'brightness'));
     volumeButton.setAttribute('aria-expanded', String(mode === 'volume'));
-    expandButton.setAttribute('aria-expanded', String(mode !== null));
-    expandButton.setAttribute('aria-label', mode ? '收起调节' : '展开调节');
-    expandButton.querySelector('path').setAttribute('d', mode ? 'm4 4 5 6-5 6' : 'm8 4-5 6 5 6');
+    document.body.dataset.expanded = String(expanded);
+    components.hidden = !expanded || mode !== null;
+    expandButton.setAttribute('aria-expanded', String(expanded));
+    expandButton.setAttribute('aria-label', expanded ? '收起组件' : '展开组件');
+    expandButton.title = expanded ? '收起组件 · 滚轮浏览组件' : '展开组件';
+    expandButton.querySelector('path').setAttribute('d', expanded ? 'm4 4 5 6-5 6' : 'm8 4-5 6 5 6');
+    for (const button of adjustmentButtons) {
+      const kind = button.dataset.adjust;
+      const available = kind === 'volume' ? state.audio.available : state.brightness.available;
+      const value = desired[kind] ?? (kind === 'volume' ? state.audio.volume : state.brightness.value);
+      button.disabled = loading || refreshing || !available;
+      const hint = kind === 'volume' && audioNeedsGesture ? '点击音量确认新设备' : '滚轮调节；Shift + 滚轮浏览';
+      button.title = `${button.getAttribute('aria-label')} · ${available ? Math.round(value) + '%' : '不可用'} · ${hint}`;
+    }
+    for (const button of muteButtons) {
+      button.disabled = muteButton.disabled;
+      button.setAttribute('aria-pressed', String(muted === true));
+      button.setAttribute('aria-label', muted === true ? '取消静音' : '静音');
+      button.title = muteButton.title;
+    }
     panel.hidden = mode === null;
     if (!mode) return;
     panel.dataset.mode = mode;
@@ -133,11 +162,11 @@
   }
 
   function open(nextMode) {
+    wheelRoute = null;
     pointerEditing = false;
     editingValue = null;
     mode = nextMode;
     if (nextMode) {
-      lastMode = nextMode;
       delete errors[nextMode];
       if (nextMode === 'volume') { delete errors.muted; audioNeedsGesture = false; }
     }
@@ -189,7 +218,12 @@
       errors[request.kind] = true;
       pointerEditing = false;
       editingValue = null;
-      if (request.kind === 'muted') mode = 'volume';
+      for (const button of document.querySelectorAll('[data-wheel-value]')) {
+        clearTimeout(feedbackTimers.get(button));
+        delete button.dataset.wheelValue;
+      }
+      // Wheel errors must be visible even when the inline panel was closed.
+      mode = request.kind === 'muted' ? 'volume' : request.kind;
       render();
     } finally {
       sending = false;
@@ -227,18 +261,29 @@
 
   brightnessButton.addEventListener('click', () => open(mode === 'brightness' ? null : 'brightness'));
   volumeButton.addEventListener('click', () => open(mode === 'volume' ? null : 'volume'));
-  expandButton.addEventListener('click', () => open(mode ? null : lastMode));
-  closeButton.addEventListener('click', () => open(null));
-  escapeButton.addEventListener('click', () => open(null));
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && mode) { event.preventDefault(); open(null); }
+  expandButton.addEventListener('click', () => {
+    expanded = !expanded;
+    open(null);
+    components.scrollLeft = 0;
+    components.scrollTop = 0;
   });
-  muteButton.addEventListener('click', () => {
+  closeButton.addEventListener('click', () => open(null));
+  function escape() {
+    if (mode) open(null);
+    else { expanded = false; render(); }
+  }
+  escapeButton.addEventListener('click', escape);
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && (mode || expanded)) { event.preventDefault(); escape(); }
+  });
+  function toggleMute() {
     if (!state.audio.available || loading) return;
     // A new explicit button click acknowledges the currently displayed output device.
     audioNeedsGesture = false;
     queueWrite('muted', !(desired.muted ?? state.audio.muted));
-  });
+  }
+  muteButton.addEventListener('click', toggleMute);
+  for (const button of muteButtons) button.addEventListener('click', toggleMute);
   slider.addEventListener('pointerdown', () => {
     pointerEditing = true;
     editingValue = Number(slider.value);
@@ -264,6 +309,108 @@
   window.addEventListener('pointercancel', finishEditing);
   window.addEventListener('blur', finishEditing);
   slider.addEventListener('change', () => { flushQueue(); });
+
+
+  function flashValue(button, value) {
+    if (!button) return;
+    clearTimeout(feedbackTimers.get(button));
+    button.dataset.wheelValue = Math.round(value) + '%';
+    feedbackTimers.set(button, setTimeout(() => delete button.dataset.wheelValue, 1000));
+  }
+
+  function adjustBy(kind, change, button) {
+    const available = kind === 'volume' ? state.audio.available : state.brightness.available;
+    if (loading || refreshing || pointerEditing || !available || errors[kind] ||
+        (kind === 'volume' && (audioNeedsGesture || errors.muted))) return;
+    const value = desired[kind] ?? (kind === 'volume' ? state.audio.volume : state.brightness.value);
+    if (!validPercent(value)) return;
+    const next = Math.min(100, Math.max(0, value + change));
+    flashValue(button, next);
+    showInteraction();
+    if (next !== value) queueWrite(kind, next);
+  }
+
+  for (const button of adjustmentButtons) {
+    button.addEventListener('click', () => {
+      const kind = button.dataset.adjust;
+      if (button.dataset.step) {
+        // A fresh click is explicit acknowledgement of the currently shown device.
+        if (kind === 'volume') audioNeedsGesture = false;
+        adjustBy(kind, Number(button.dataset.step) * 2, button);
+      } else open(kind);
+    });
+  }
+
+  for (const button of document.querySelectorAll('[data-action]')) {
+    const originalTitle = button.title;
+    button.addEventListener('click', async () => {
+      if (button.getAttribute('aria-busy') === 'true') return;
+      button.setAttribute('aria-busy', 'true');
+      delete button.dataset.failed;
+      try {
+        if (typeof api?.runAction !== 'function') throw new Error('Unavailable');
+        await api.runAction(button.dataset.action);
+        button.title = originalTitle;
+      } catch {
+        button.dataset.failed = 'true';
+        button.title = originalTitle + '：操作未完成，请松开修饰键后重试';
+      } finally { button.setAttribute('aria-busy', 'false'); }
+    });
+  }
+
+  function browseComponents(event) {
+    if (!expanded || mode || components.hidden) return;
+    event.preventDefault();
+    const vertical = document.body.dataset.orientation === 'vertical';
+    const primary = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+    const unit = event.deltaMode === 1 ? 32 : event.deltaMode === 2 ? (vertical ? components.clientHeight : components.clientWidth) : 1;
+    // Wheel up reveals later components: the contents move left/up.
+    const delta = -primary * unit;
+    if (vertical) components.scrollTop += delta;
+    else components.scrollLeft += delta;
+  }
+
+  // Keep a continuous wheel gesture on its original job. Scrolling a volume
+  // button underneath a stationary pointer must never turn navigation into audio.
+  document.addEventListener('pointermove', event => {
+    if (wheelRoute && Math.hypot(event.clientX - wheelRoute.x, event.clientY - wheelRoute.y) >= 3)
+      wheelRoute = null;
+  });
+  document.querySelector('.touch-bar').addEventListener('wheel', event => {
+    if (event.ctrlKey || event.metaKey || event.altKey) { wheelRoute = null; return; }
+    const now = performance.now();
+    const moved = wheelRoute && Math.hypot(event.clientX - wheelRoute.x, event.clientY - wheelRoute.y) >= 3;
+    if (!wheelRoute || now - wheelRoute.time > 350 || moved) {
+      const button = event.target.closest('button');
+      let kind = button?.dataset.adjust;
+      if (button === brightnessButton) kind = 'brightness';
+      if (button === volumeButton) kind = 'volume';
+      if (event.target === slider) kind = mode;
+      wheelRoute = { kind: event.shiftKey || !kind ? 'browse' : kind, button,
+        slider: event.target === slider, time: now, x: event.clientX, y: event.clientY };
+      wheelRemainder.volume = wheelRemainder.brightness = 0;
+    }
+    wheelRoute.time = now;
+    // Shift can always choose browsing; releasing it does not change that gesture.
+    if (event.shiftKey) wheelRoute.kind = 'browse';
+    if (wheelRoute.kind === 'browse') { browseComponents(event); return; }
+    event.preventDefault();
+    if (!event.deltaY || (wheelRoute.slider && slider.disabled)) return;
+    const kind = wheelRoute.kind;
+    if (wheelKind !== kind || now - wheelTime > 350 || Math.sign(wheelRemainder[kind]) !== Math.sign(-event.deltaY)) wheelRemainder[kind] = 0;
+    wheelKind = kind;
+    wheelTime = now;
+    const units = event.deltaMode === 1 ? event.deltaY / 3 : event.deltaMode === 2 ? event.deltaY : event.deltaY / 100;
+    wheelRemainder[kind] += -units;
+    const steps = Math.trunc(wheelRemainder[kind]);
+    if (!steps) return;
+    wheelRemainder[kind] -= steps;
+    adjustBy(kind, Math.max(-3, Math.min(3, steps)) * 2, wheelRoute.button);
+  }, { passive: false });
+
+  componentTrack.addEventListener('focusin', event => {
+    if (expanded && !mode) event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  });
 
   // Initialization and external system updates are strictly read-only.
   if (api) {

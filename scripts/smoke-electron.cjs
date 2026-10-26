@@ -12,6 +12,8 @@ const screenshot = {
   vertical: path.join(output, 'touchbar-vertical.png'),
   slider: path.join(output, 'touchbar-slider.png'),
   verticalError: path.join(output, 'touchbar-vertical-error.png'),
+  expanded: path.join(output, 'touchbar-expanded.png'),
+  expandedVertical: path.join(output, 'touchbar-expanded-vertical.png'),
 };
 const errors = [];
 (async () => {
@@ -61,7 +63,9 @@ const errors = [];
   try {
     fs.mkdirSync(output, { recursive: true });
     await launch();
-    await expect(page.locator('button')).toHaveCount(7);
+    await expect(page.locator('.compact-controls button')).toHaveCount(3);
+    await expect(page.locator('#components')).toBeHidden();
+    await expect(page.locator('.expand')).toHaveAttribute('aria-expanded', 'false');
     await expect(page.locator('#adjustment')).toBeHidden();
     await expect(page.getByRole('button', { name: /Siri/i })).toHaveCount(0);
     const layout = await page.evaluate(() => window.touchbar.getLayout());
@@ -91,6 +95,136 @@ const errors = [];
     assert.deepEqual(initialControls.audio, { available: true, volume: 25, muted: false, deviceId: 'mock-default' });
     await expect(page.locator('#mute-button')).toBeEnabled();
     const range = page.locator('#adjustment-slider');
+    const components = page.locator('#components');
+    const expandedBrightness = '#components [data-adjust="brightness"]:not([data-step])';
+    const expandedVolume = '#components [data-adjust="volume"]:not([data-step])';
+    const wheel = async (selector, deltaY, deltaMode = 0, deltaX = 0) => {
+      const target = page.locator(selector);
+      const box = await target.boundingBox();
+      assert.ok(box, 'wheel target must be visible');
+      const pointer = { clientX: box.x + box.width / 2, clientY: box.y + box.height / 2 };
+      // Ordinary calls are independent user intentions. Explicit movement makes
+      // them distinct from the stationary continuous-gesture regression below.
+      await target.dispatchEvent('pointermove', { ...pointer, clientX: pointer.clientX + 8, bubbles: true });
+      await target.dispatchEvent('pointermove', { ...pointer, bubbles: true });
+      await target.dispatchEvent('wheel', { ...pointer, deltaY, deltaX, deltaMode, bubbles: true, cancelable: true });
+    };
+    await page.locator('.expand').click();
+    await expect(page.locator('body')).toHaveAttribute('data-expanded', 'true');
+    await expect(page.locator('.expand')).toHaveAttribute('aria-expanded', 'true');
+    await expect(components).toBeVisible();
+    await expect(page.locator('.compact-controls')).toBeHidden();
+    await expect(page.locator('#adjustment')).toBeHidden();
+    assert.ok(await components.locator('button').count() >= 10, 'expanded strip reveals additional usable controls');
+    assert.deepEqual(await page.evaluate(() => window.touchbar.getControls()), initialControls, 'expansion only reveals controls');
+    const expandedBox = await components.boundingBox();
+    const spaceBox = await page.locator('.empty-space').boundingBox();
+    assert.ok(Math.abs(expandedBox.width - spaceBox.width) <= 2, 'expanded components fill the available bar');
+    await page.screenshot({ path: screenshot.expanded, omitBackground: true, animations: 'disabled' });
+    const actions = ['mediaPrevious', 'mediaPlayPause', 'mediaNext', 'showDesktop', 'taskView', 'openExplorer'];
+    for (const action of actions) {
+      const button = page.locator(`#components [data-action="${action}"]`);
+      await button.click();
+      await expect(button).toHaveAttribute('aria-busy', 'false');
+      assert.equal(await button.getAttribute('data-failed'), null, 'allowlisted action succeeds in mock mode: ' + action);
+    }
+    for (const action of ['', '__proto__', 'setVolume', 'mediaPlayPause;calc', 123, null]) {
+      assert.equal(await page.evaluate(async action => {
+        try { await window.touchbar.runAction(action); return false; } catch { return true; }
+      }, action), true, 'renderer cannot invoke an arbitrary system action');
+    }
+    assert.deepEqual(await page.evaluate(() => window.touchbar.getControls()), initialControls, 'mock media and desktop actions preserve device state');
+    // A short bar must expose overflow through its own viewport, without resizing
+    // the native window or changing the user's saved dock/monitor preferences.
+    await page.locator('.touch-bar').evaluate(el => { el.style.width = '340px'; });
+    const horizontalOverflow = await components.evaluate(el => ({ client: el.clientWidth, scroll: el.scrollWidth }));
+    assert.ok(horizontalOverflow.scroll > horizontalOverflow.client, 'narrow horizontal bar has reachable hidden components');
+    await wheel('#components', -120);
+    await expect.poll(() => components.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+    assert.equal(await components.evaluate(el => el.scrollTop), 0);
+    await wheel('#components', 120);
+    await expect.poll(() => components.evaluate(el => el.scrollLeft)).toBe(0);
+    await wheel('#components', -3, 1);
+    await expect.poll(() => components.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+    await wheel('#components', -1, 2);
+    const scrolled = await components.evaluate(el => ({ position: el.scrollLeft, end: el.scrollWidth - el.clientWidth }));
+    assert.ok(scrolled.position >= 0 && scrolled.position <= scrolled.end, 'scrolling stays within viewport bounds');
+    await components.evaluate(el => { el.scrollLeft = 0; });
+    await page.locator(expandedBrightness).dispatchEvent('wheel', { deltaY: -120, shiftKey: true, bubbles: true, cancelable: true });
+    await expect.poll(() => components.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+    await components.evaluate(el => { el.scrollLeft = 0; });
+    await wheel('.expand', -120);
+    await expect.poll(() => components.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+    assert.deepEqual(await page.evaluate(() => window.touchbar.getControls()), initialControls, 'navigating components does not change audio or brightness');
+    // As content slides beneath a stationary pointer, the next wheel event may
+    // target a volume button. That same gesture must remain navigation only.
+    const gesture = await page.evaluate(() => {
+      const viewport = document.querySelector('#components');
+      const volume = viewport.querySelector('[data-adjust="volume"]:not([data-step])');
+      const rect = viewport.getBoundingClientRect();
+      const pointer = { clientX: rect.x + 15, clientY: rect.y + rect.height / 2 };
+      viewport.scrollLeft = 0;
+      viewport.dispatchEvent(new PointerEvent('pointermove', { ...pointer, clientX: pointer.clientX + 8, bubbles: true }));
+      viewport.dispatchEvent(new PointerEvent('pointermove', { ...pointer, bubbles: true }));
+      viewport.dispatchEvent(new WheelEvent('wheel', { ...pointer, deltaY: -120, bubbles: true, cancelable: true }));
+      const first = viewport.scrollLeft;
+      volume.dispatchEvent(new WheelEvent('wheel', { ...pointer, deltaY: -120, bubbles: true, cancelable: true }));
+      return { pointer, first, second: viewport.scrollLeft };
+    });
+    assert.ok(gesture.second > gesture.first, 'volume under a stationary pointer continues the original browse gesture');
+    await page.waitForTimeout(150); // Let a mistaken queued setter become observable.
+    assert.deepEqual(await page.evaluate(() => window.touchbar.getControls()), initialControls, 'continuous browsing cannot turn into a volume adjustment');
+    await page.locator(expandedVolume).dispatchEvent('wheel', { ...gesture.pointer, deltaY: 120, bubbles: true, cancelable: true });
+    await page.waitForTimeout(150);
+    assert.deepEqual(await page.evaluate(() => window.touchbar.getControls()), initialControls, 'reversing direction does not change the locked browsing route');
+    await page.waitForTimeout(400);
+    await page.locator(expandedVolume).dispatchEvent('wheel', { ...gesture.pointer, deltaY: -100, bubbles: true, cancelable: true });
+    await expect.poll(() => page.evaluate(async () => (await window.touchbar.getControls()).audio.volume)).toBe(27);
+    await page.evaluate(() => window.touchbar.setVolume(25, 'mock-default'));
+    await page.locator('.touch-bar').evaluate(el => { el.style.removeProperty('width'); });
+    await components.evaluate(el => { el.scrollLeft = 0; });
+    await page.locator(expandedBrightness).click();
+    await expect(components).toBeHidden();
+    await expect(range).toHaveAttribute('aria-label', '亮度');
+    await expect(page.locator('body')).toHaveAttribute('data-expanded', 'true');
+    await wheel('#adjustment-slider', -120);
+    await expect.poll(() => page.evaluate(async () => (await window.touchbar.getControls()).brightness.value)).toBe(62);
+    await wheel('#adjustment-slider', 3, 1);
+    await expect.poll(() => page.evaluate(async () => (await window.touchbar.getControls()).brightness.value)).toBe(60);
+    await wheel('#adjustment-slider', -1, 2);
+    await expect.poll(() => page.evaluate(async () => (await window.touchbar.getControls()).brightness.value)).toBe(62);
+    assert.equal((await page.evaluate(() => window.touchbar.getControls())).audio.volume, 25, 'brightness wheel never changes audio');
+    await page.locator('.close-adjustment').click();
+    await expect(components).toBeVisible();
+    await wheel(expandedVolume, -120);
+    await expect.poll(() => page.evaluate(async () => (await window.touchbar.getControls()).audio.volume)).toBe(27);
+    assert.equal((await page.evaluate(() => window.touchbar.getControls())).brightness.value, 62, 'volume wheel never changes brightness');
+    // The value and mute state are independently controlled, including at limits.
+    await page.evaluate(() => window.touchbar.setVolume(99, 'mock-default'));
+    if (await components.isHidden()) await page.locator('.close-adjustment').click();
+    await wheel(expandedVolume, -120);
+    await expect.poll(() => page.evaluate(async () => (await window.touchbar.getControls()).audio.volume)).toBe(100);
+    if (await components.isHidden()) await page.locator('.close-adjustment').click();
+    await wheel(expandedVolume, -120);
+    await expect.poll(() => page.evaluate(async () => (await window.touchbar.getControls()).audio.volume)).toBe(100);
+    assert.equal((await page.evaluate(() => window.touchbar.getControls())).audio.muted, false);
+    await page.evaluate(() => window.touchbar.setVolume(1, 'mock-default'));
+    if (await components.isHidden()) await page.locator('.close-adjustment').click();
+    await wheel(expandedVolume, 120);
+    await expect.poll(() => page.evaluate(async () => (await window.touchbar.getControls()).audio.volume)).toBe(0);
+    if (await components.isHidden()) await page.locator('.close-adjustment').click();
+    await page.locator(expandedBrightness).click();
+    await page.keyboard.press('Escape');
+    await expect(components).toBeVisible();
+    await expect(page.locator('body')).toHaveAttribute('data-expanded', 'true');
+    await page.keyboard.press('Escape');
+    await expect(components).toBeHidden();
+    await expect(page.locator('body')).toHaveAttribute('data-expanded', 'false');
+    await expect(page.locator('.compact-controls')).toBeVisible();
+    await page.evaluate(async () => {
+      await window.touchbar.setVolume(25, 'mock-default');
+      await window.touchbar.setBrightness(60);
+    });
     await page.locator('#volume-button').click();
     await expect(page.locator('#adjustment')).toBeVisible();
     await expect(range).toHaveValue('25');
@@ -138,6 +272,8 @@ const errors = [];
     await expect(page.locator('.control-status')).toContainText('音频设备已切换');
     await expect(range).toBeDisabled();
     await range.evaluate(el => { el.value = '99'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+    await wheel('#adjustment-slider', -120);
+    await wheel('#adjustment-slider', -3, 1);
     assert.equal((await page.evaluate(() => window.touchbar.getControls())).audio.volume, 44, 'an old gesture cannot change a replacement device');
     await app.evaluate(({ BrowserWindow }, state) => BrowserWindow.getAllWindows()[0].webContents.send('controls:changed', state), await page.evaluate(() => window.touchbar.getControls()));
     await range.press('Escape');
@@ -168,6 +304,24 @@ const errors = [];
     await page.mouse.move(0, 0);
     await page.screenshot({ path: screenshot.horizontal, omitBackground: true, animations: 'disabled' });
     const vertical = await move('left');
+    const beforeVerticalNavigation = await page.evaluate(() => window.touchbar.getControls());
+    await page.locator('.expand').click();
+    await expect(components).toBeVisible();
+    await page.screenshot({ path: screenshot.expandedVertical, omitBackground: true, animations: 'disabled' });
+    await page.locator('.touch-bar').evaluate(el => { el.style.height = '360px'; });
+    const verticalOverflow = await components.evaluate(el => ({ client: el.clientHeight, scroll: el.scrollHeight }));
+    assert.ok(verticalOverflow.scroll > verticalOverflow.client, 'short vertical bar has reachable hidden components');
+    await wheel('#components', -120);
+    await expect.poll(() => components.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+    assert.equal(await components.evaluate(el => el.scrollLeft), 0);
+    await wheel('#components', 120);
+    await expect.poll(() => components.evaluate(el => el.scrollTop)).toBe(0);
+    await wheel('#components', -3, 1);
+    await expect.poll(() => components.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+    assert.deepEqual(await page.evaluate(() => window.touchbar.getControls()), beforeVerticalNavigation, 'vertical component navigation is read-only');
+    await page.locator('.touch-bar').evaluate(el => { el.style.removeProperty('height'); });
+    await page.locator('.expand').click();
+    await expect(components).toBeHidden();
     await page.locator('#volume-button').click();
     await expect(page.locator('#adjustment-slider')).toHaveAttribute('aria-orientation', 'vertical');
     const verticalTrack = await range.boundingBox();
@@ -184,9 +338,11 @@ const errors = [];
       ipcMain.removeHandler('controls:brightness');
       ipcMain.handle('controls:brightness', () => { globalThis.__brightnessAttempts++; throw new Error('Simulated device failure'); });
     });
-    await page.locator('#brightness-button').click();
-    await range.focus();
-    await range.press('ArrowDown');
+    await expect(page.locator('#adjustment')).toBeHidden();
+    await wheel('#brightness-button', -120);
+    await expect(page.locator('#adjustment')).toBeVisible();
+    await expect(range).toHaveAttribute('aria-label', '亮度');
+    assert.equal(await page.locator('#brightness-button').getAttribute('data-wheel-value'), null, 'failed wheel change does not leave a simulated percentage');
     await expect(page.locator('.retry-control')).toBeVisible();
     await expect(page.locator('.retry-control')).toBeEnabled();
     await expect(range).toBeVisible();
@@ -227,7 +383,7 @@ const errors = [];
     assert.equal(await page.evaluate(() => localStorage.length), 0, 'layout has no renderer storage copy');
     await move('top');
     assert.deepEqual(errors, []);
-    console.log(JSON.stringify({ passed: true, controlsMode: 'mock', realDeviceWrites: false, horizontal, vertical, native, screenshot, checks: ['one top-docked window', 'topmost recovery on blur signal preserves focus', 'mock-only slider, mute, external sync and unavailable states', 'no directional context-menu items', 'rounded corners and native transparency', '72% work-area width', 'left/right vertical and free/top horizontal after moved', 'upright icons', 'preload getLayout/onLayout and unsubscribe', 'widget-layout.json persistence and restart', 'renderer sandbox and no exceptions'] }, null, 2));
+    console.log(JSON.stringify({ passed: true, controlsMode: 'mock', realDeviceWrites: false, horizontal, vertical, native, screenshot, checks: ['one top-docked window', 'topmost recovery on blur signal preserves focus', 'mock-only slider, mute, external sync and unavailable states', 'expanded components fill bar and close back to compact mode', 'horizontal/vertical wheel navigation and overflow bounds', 'Shift-wheel and arrow-wheel browse without setting changes', 'continuous browse gesture stays locked when volume scrolls under pointer', 'allowlisted media/desktop actions run only against mocks', 'wheel adjustments target brightness or volume and clamp at limits', 'device invalidation blocks slider wheel writes', 'failed wheel write reveals compact feedback and retry does not replay it', 'no directional context-menu items', 'rounded corners and native transparency', '72% work-area width', 'left/right vertical and free/top horizontal after moved', 'upright icons', 'preload getLayout/onLayout and unsubscribe', 'widget-layout.json persistence and restart', 'renderer sandbox and no exceptions'] }, null, 2));
   } finally {
     if (app) await app.close();
     const resolved = path.resolve(data);

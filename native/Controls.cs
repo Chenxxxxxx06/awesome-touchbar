@@ -55,6 +55,10 @@ internal static class Program
                         using (var audio = new AudioEndpoint()) { ValidateTarget(request, audio); audio.SetMuted((bool)value); }
                     }
                     else if (op == "setBrightness") SetBrightness(ValidatePercent(value));
+                    else if (op == "runAction") {
+                        if (!(value is string)) throw new ArgumentException("未知组件操作");
+                        NativeActions.Execute((string)value);
+                    }
                     else throw new ArgumentException("未知操作");
                 }
                 Write(new { id = id, ok = true, state = ReadState(op == "setBrightness") });
@@ -231,6 +235,80 @@ internal static class Program
             }
         }
         throw new InvalidOperationException("当前屏幕不支持内屏亮度调节");
+    }
+}
+
+// Only named widget actions are accepted; renderer input never becomes a command.
+internal static class NativeActions
+{
+    internal const uint KeyUp = 2;
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct KeyboardInput { internal ushort key, scan; internal uint flags, time; internal UIntPtr extra; }
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct MouseInput { internal int x, y; internal uint data, flags, time; internal UIntPtr extra; }
+    [StructLayout(LayoutKind.Explicit)]
+    internal struct InputUnion { [FieldOffset(0)] internal KeyboardInput keyboard; [FieldOffset(0)] internal MouseInput mouse; }
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct Input { internal uint type; internal InputUnion data; }
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern uint SendInput(uint count, Input[] inputs, int size);
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int key);
+
+    internal static ushort[] Keys(string action)
+    {
+        switch (action) {
+            case "mediaPrevious": return new ushort[] { 0xB1 };
+            case "mediaPlayPause": return new ushort[] { 0xB3 };
+            case "mediaNext": return new ushort[] { 0xB0 };
+            case "showDesktop": return new ushort[] { 0x5B, 0x44 };
+            case "taskView": return new ushort[] { 0x5B, 0x09 };
+            case "openExplorer": return new ushort[] { 0x5B, 0x45 };
+            default: throw new ArgumentException("未知组件操作");
+        }
+    }
+    private static Input Key(ushort key, bool up)
+    {
+        // Windows and media keys use the extended-key flag.
+        uint extended = key == 0x5B || key >= 0xB0 ? 1U : 0U;
+        return new Input { type = 1, data = new InputUnion { keyboard = new KeyboardInput { key = key, flags = extended | (up ? KeyUp : 0U) } } };
+    }
+    internal static Input[] Sequence(string action)
+    {
+        ushort[] keys = Keys(action);
+        var inputs = new Input[keys.Length * 2];
+        for (int i = 0; i < keys.Length; i++) {
+            inputs[i] = Key(keys[i], false);
+            inputs[inputs.Length - i - 1] = Key(keys[i], true);
+        }
+        return inputs;
+    }
+    internal static void SendChecked(Input[] inputs, Func<Input[], uint> send)
+    {
+        uint inserted = send(inputs);
+        if (inserted == inputs.Length) return;
+        // Release only keys inserted by this request, never unrelated user-held keys.
+        var held = new List<ushort>();
+        for (int i = 0; i < Math.Min(inserted, inputs.Length); i++) {
+            ushort key = inputs[i].data.keyboard.key;
+            if ((inputs[i].data.keyboard.flags & KeyUp) != 0) held.Remove(key);
+            else held.Add(key);
+        }
+        if (held.Count > 0) {
+            held.Reverse();
+            var cleanup = new Input[held.Count];
+            for (int i = 0; i < cleanup.Length; i++) cleanup[i] = Key(held[i], true);
+            send(cleanup);
+        }
+        throw new InvalidOperationException("Windows 未接受快捷操作，请重试");
+    }
+    internal static void Execute(string action)
+    {
+        Input[] inputs = Sequence(action); // Validate before touching any Windows API.
+        foreach (int modifier in new int[] { 0x10, 0x11, 0x12, 0x5B, 0x5C })
+            if ((GetAsyncKeyState(modifier) & 0x8000) != 0)
+                throw new InvalidOperationException("请松开键盘修饰键后重试");
+        SendChecked(inputs, sequence => SendInput((uint)sequence.Length, sequence, Marshal.SizeOf(typeof(Input))));
     }
 }
 
