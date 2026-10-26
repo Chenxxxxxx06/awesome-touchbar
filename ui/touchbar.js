@@ -6,6 +6,13 @@
   const aiButton = document.querySelector('#ai-button');
   let aiOpen = false;
   let musicOpen = false;
+  let diyOpen = false;
+  const diyView = window.diyView;
+  let productivityOpen = null;
+  const productivityView = window.productivityView;
+  const noticeButton = document.querySelector('#notice-button');
+  const todoButton = document.querySelector('#todo-button');
+  const focusButton = document.querySelector('#focus-button');
   const musicView = window.musicView;
   const musicButton = document.querySelector('#music-button');
   let aiStatusTimer;
@@ -15,6 +22,7 @@
   const adjustmentButtons = [...document.querySelectorAll('[data-adjust]')];
   const muteButtons = [...document.querySelectorAll('[data-mute]')];
   let expanded = false;
+  let widgets;
   const wheelRemainder = { brightness: 0, volume: 0 };
   let wheelKind = null;
   let wheelTime = 0;
@@ -120,20 +128,16 @@
     brightnessButton.setAttribute('aria-expanded', String(mode === 'brightness'));
     volumeButton.setAttribute('aria-expanded', String(mode === 'volume'));
     document.body.dataset.expanded = String(expanded);
-    components.hidden = !expanded || mode !== null || aiOpen || musicOpen;
-    // The same buttons keep their handlers and status badges in both locations.
-    // Only the component browser scrolls them; detail panels retain navigation.
-    const inComponentList = !components.hidden;
-    if (inComponentList && aiButton.parentElement !== componentTrack) {
-      componentTrack.prepend(aiButton, musicButton);
-    } else if (!inComponentList && aiButton.parentElement === componentTrack) {
-      expandButton.after(aiButton, musicButton);
-    }
-    aiButton.classList.toggle('component', inComponentList);
-    musicButton.classList.toggle('component', inComponentList);
+    components.hidden = !expanded || mode !== null || aiOpen || musicOpen || diyOpen || !!productivityOpen;
+    document.body.dataset.productivityOpen = String(!!productivityOpen);
+    productivityView?.show(productivityOpen);
+    noticeButton.setAttribute('aria-expanded', String(productivityOpen === 'notices'));
+    widgets?.layout({ browsing: !components.hidden, detail: diyOpen ? 'diy' : aiOpen ? 'ai' : musicOpen ? 'music' : productivityOpen });
+    diyView?.show(diyOpen);
+    document.body.dataset.diyOpen = String(diyOpen);
     document.body.dataset.musicOpen = String(musicOpen);
     musicButton.setAttribute('aria-expanded', String(musicOpen));
-    musicView?.show(!mode && !aiOpen && (!expanded || musicOpen), musicOpen);
+    musicView?.show(!mode && !aiOpen && !productivityOpen && !diyOpen && !widgets?.editing() && widgets?.visible('music') !== false && (!expanded || musicOpen), musicOpen);
     document.body.dataset.aiOpen = String(aiOpen);
     aiButton.setAttribute('aria-expanded', String(aiOpen));
     expandButton.setAttribute('aria-expanded', String(expanded));
@@ -144,12 +148,12 @@
       const kind = button.dataset.adjust;
       const available = kind === 'volume' ? state.audio.available : state.brightness.available;
       const value = desired[kind] ?? (kind === 'volume' ? state.audio.volume : state.brightness.value);
-      button.disabled = loading || refreshing || !available;
+      button.disabled = !widgets?.editing() && (loading || refreshing || !available);
       const hint = kind === 'volume' && audioNeedsGesture ? '点击音量确认新设备' : '滚轮调节；Shift + 滚轮浏览';
       button.title = `${button.getAttribute('aria-label')} · ${available ? Math.round(value) + '%' : '不可用'} · ${hint}`;
     }
     for (const button of muteButtons) {
-      button.disabled = muteButton.disabled;
+      button.disabled = !widgets?.editing() && muteButton.disabled;
       button.setAttribute('aria-pressed', String(muted === true));
       button.setAttribute('aria-label', muted === true ? '取消静音' : '静音');
       button.title = muteButton.title;
@@ -186,6 +190,8 @@
   }
 
   function open(nextMode) {
+    diyOpen = false;
+    productivityOpen = null;
     musicOpen = false;
     if (aiOpen) closeAi();
     wheelRoute = null;
@@ -200,6 +206,7 @@
   }
 
   function queueWrite(kind, value) {
+    if (widgets?.editing()) return;
     if (kind !== 'brightness' && (!state.audio.available || !state.audio.deviceId || audioNeedsGesture)) return;
     const id = ++sequence;
     desired[kind] = value;
@@ -296,6 +303,9 @@
   });
   closeButton.addEventListener('click', () => open(null));
   function escape() {
+    if (widgets?.editing()) { api.finishWidgets(false).catch(() => {}); return; }
+    if (diyOpen) { diyView?.back(); return; }
+    if (productivityOpen) { productivityOpen = null; render(); return; }
     if (musicOpen) { musicOpen = false; render(); return; }
     if (aiOpen) { aiView.back(); return; }
     if (mode) open(null);
@@ -303,7 +313,7 @@
   }
   escapeButton.addEventListener('click', escape);
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && (mode || expanded || aiOpen || musicOpen)) { event.preventDefault(); escape(); }
+    if (event.key === 'Escape' && (mode || expanded || aiOpen || musicOpen || diyOpen || productivityOpen)) { event.preventDefault(); escape(); }
   });
   function toggleMute() {
     if (!state.audio.available || loading) return;
@@ -395,6 +405,10 @@
     const unit = event.deltaMode === 1 ? 32 : event.deltaMode === 2 ? (vertical ? components.clientHeight : components.clientWidth) : 1;
     // Wheel up reveals later components: the contents move left/up.
     const delta = -primary * unit;
+    const fits = vertical ? components.scrollHeight <= components.clientHeight + 1 : components.scrollWidth <= components.clientWidth + 1;
+    components.dataset.scrollHint = fits ? '已显示全部组件' : '';
+    clearTimeout(components._hintTimer);
+    components._hintTimer = setTimeout(() => { delete components.dataset.scrollHint; }, 1100);
     if (vertical) components.scrollTop += delta;
     else components.scrollLeft += delta;
   }
@@ -406,6 +420,7 @@
       wheelRoute = null;
   });
   document.querySelector('.touch-bar').addEventListener('wheel', event => {
+    if (diyOpen && document.querySelector('#diy-panel').contains(event.target)) { wheelRoute = null; return; }
     if (aiOpen && aiPanel.contains(event.target)) { wheelRoute = null; return; }
     if (event.ctrlKey || event.metaKey || event.altKey) { wheelRoute = null; return; }
     const now = performance.now();
@@ -458,6 +473,28 @@
       : 'AI 工具：本机状态与 Token 活动';
   }
 
+  function openProductivity(view) {
+    if (!['todo', 'focus', 'notices'].includes(view)) return;
+    open(null); productivityOpen = view; render();
+  }
+  productivityView?.mount(document.querySelector('#productivity-panel'), {
+    onClose: () => { productivityOpen = null; render(); },
+    onNavigate: view => { if (view.startsWith('plugin:')) { diyView?.openPlugin(view.slice(7)); return; } if (view === 'ai') aiButton.click(); else openProductivity(view); },
+    onState: state => {
+      noticeButton.querySelector('.productivity-dot').hidden = !state.unread;
+      noticeButton.title = state.unread ? `提醒中心 · ${state.unread} 条未读` : '提醒中心';
+      todoButton.querySelector('.productivity-dot').hidden = !state.notices.some(n => n.kind === 'todo' && !n.read);
+      focusButton.querySelector('.productivity-dot').hidden = !state.notices.some(n => n.kind === 'focus' && !n.read);
+      focusButton.dataset.running = String(state.focus.status === 'running');
+      focusButton.title = state.focus.status === 'running' ? `专注中 · 剩余 ${Math.ceil(state.focus.remainingMs / 60000)} 分钟` : '专注计时';
+      todoButton.title = `待办事项 · ${state.todos.filter(t => !t.done).length} 条未完成`;
+    },
+  });
+  todoButton.addEventListener('click', () => openProductivity('todo'));
+  focusButton.addEventListener('click', () => openProductivity('focus'));
+  noticeButton.addEventListener('click', () => { if (productivityOpen === 'notices') { productivityOpen = null; render(); } else openProductivity('notices'); });
+  api?.onProductivityOpen?.(openProductivity);
+
   function openMusic() {
     open(null);
     musicOpen = true;
@@ -496,7 +533,21 @@
     aiStatusTimer = setTimeout(refreshAiBadge, 60000);
   }
   aiStatusTimer = setTimeout(refreshAiBadge, 3000);
-  window.addEventListener('beforeunload', () => { clearTimeout(aiStatusTimer); aiView?.close(); musicView?.dispose(); });
+  window.addEventListener('beforeunload', () => { clearTimeout(aiStatusTimer); aiView?.close(); musicView?.dispose(); productivityView?.dispose(); widgets?.dispose(); diyView?.dispose(); });
+
+  diyView?.mount(document.querySelector('#diy-panel'), {
+    onOpen: () => { open(null); diyOpen = true; render(); },
+    onClose: () => { diyOpen = false; render(); },
+    onInstalled: () => { expanded = true; open(null); setTimeout(() => { if (expanded && !diyOpen) { components.scrollLeft = components.scrollWidth; components.scrollTop = components.scrollHeight; } }, 100); },
+  });
+  widgets = window.widgetLayout?.({
+    onChange: render,
+    onEdit: () => {
+      clearTimeout(queueTimer); queueTimer = undefined; queued.length = 0;
+      for (const key of Object.keys(desired)) delete desired[key];
+      expanded = true; open(null);
+    },
+  });
 
   // Initialization and external system updates are strictly read-only.
   if (api) {

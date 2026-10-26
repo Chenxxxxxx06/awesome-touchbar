@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "reading-count",
+  "name": "今日阅读",
+  "description": "每完成一段阅读，为今天加一分",
+  "icon": "count",
+  "color": "blue",
+  "kind": "counter",
+  "config": {
+    "initial": 0,
+    "step": 1,
+    "min": 0,
+    "max": 100
+  }
+}

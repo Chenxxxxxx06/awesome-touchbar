@@ -1,0 +1,55 @@
+'use strict';
+const { _electron, expect } = require('@playwright/test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
+const root = path.resolve(__dirname, '..'), data = fs.mkdtempSync(path.join(os.tmpdir(), 'touchbar-productivity-ui-'));
+let app;
+(async () => {
+  try {
+    const env = { ...process.env, TOUCH_BAR_DATA_DIR: data, TOUCH_BAR_CONTROLS_MODE: 'mock', TOUCH_BAR_AI_MODE: 'mock', TOUCH_BAR_MUSIC_MODE: 'mock' }; delete env.ELECTRON_RUN_AS_NODE;
+    app = await _electron.launch({ executablePath: process.env.TOUCH_BAR_TEST_EXECUTABLE || require('electron'), args: process.env.TOUCH_BAR_TEST_EXECUTABLE ? [] : [root], env });
+    const page = await app.firstWindow(), errors = []; page.on('pageerror', e => errors.push(e.message));
+    await page.locator('#notice-button').waitFor(); const controls = await page.evaluate(() => window.touchbar.getControls());
+    await app.evaluate(() => { globalThis.__realNow = Date.now; globalThis.__clockOffset = 0; Date.now = () => globalThis.__realNow() + globalThis.__clockOffset; });
+    await page.locator('.expand').click(); await page.locator('#todo-button').click();
+    await expect(page.locator('#productivity-panel')).toBeVisible();
+    const editorPromise = app.waitForEvent('window'); await page.getByRole('button', { name: '添加待办', exact: true }).click(); const editor = await editorPromise;
+    await editor.locator('#text').fill('整理今天的设计稿'); await editor.screenshot({ path: path.join(root, 'release-local/screenshots/todo-editor.png') }); await editor.locator('[data-minutes="10"]').click(); await editor.locator('#save').click();
+    await expect(page.locator('.p-title')).toHaveText('整理今天的设计稿');
+    const stored = await page.evaluate(() => window.touchbar.getProductivity()); assert.equal(stored.todos.length, 1); assert.ok(stored.todos[0].dueAt);
+    await page.getByRole('button', { name: '完成待办', exact: true }).click(); await expect(page.locator('.p-empty')).toBeVisible();
+    await page.getByRole('button', { name: '查看已完成待办', exact: true }).click(); await page.getByRole('button', { name: '恢复待办', exact: true }).click(); await page.getByRole('button', { name: '查看未完成待办', exact: true }).click();
+    const output = path.join(root, 'release-local/screenshots'); fs.mkdirSync(output, { recursive: true }); await page.screenshot({ path: path.join(output, 'todo-horizontal.png'), omitBackground: true });
+    await app.evaluate(() => { globalThis.__clockOffset += 11 * 60000; }); await page.evaluate(() => window.productivityView.refresh());
+    await expect(page.locator('#notice-button .productivity-dot')).toBeVisible();
+    await page.locator('.p-close').click(); await page.locator('#focus-button').click();
+    await page.locator('.p-duration').fill('1'); await page.getByRole('button', { name: '开始专注', exact: true }).click();
+    await expect(page.locator('.p-subtitle')).toHaveText('专注中');
+    await page.getByRole('button', { name: '暂停专注', exact: true }).click(); await expect(page.locator('.p-subtitle')).toHaveText('已暂停');
+    await page.getByRole('button', { name: '继续专注', exact: true }).click();
+    await page.screenshot({ path: path.join(output, 'focus-horizontal.png'), omitBackground: true });
+    await app.evaluate(() => { globalThis.__clockOffset += 61000; }); await page.evaluate(() => window.productivityView.refresh());
+    await expect(page.locator('.p-subtitle')).toHaveText('完成了 · 休息一下');
+    await page.locator('#notice-button').click(); await expect(page.locator('.p-title')).toHaveText('这一段专注完成了');
+    assert.equal((await page.evaluate(() => window.touchbar.getProductivity())).notices.length, 2);
+    await page.getByRole('button', { name: '全部标为已读', exact: true }).click(); await expect(page.locator('#notice-button .productivity-dot')).toBeHidden();
+    await page.screenshot({ path: path.join(output, 'notices-horizontal.png'), omitBackground: true });
+    await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; w.removeAllListeners('move'); w.removeAllListeners('moved'); w.setBounds({ x: 20, y: 80, width: 68, height: 750 }); w.webContents.send('touchbar:layout', { orientation: 'vertical', edge: 'left', scale: .72 }); });
+    await expect(page.locator('body')).toHaveAttribute('data-orientation', 'vertical');
+    const box = await page.locator('#productivity-panel').boundingBox(); assert.ok(box.width <= 40.1);
+    await page.screenshot({ path: path.join(output, 'notices-vertical.png'), omitBackground: true });
+    await page.keyboard.press('Escape'); await expect(page.locator('#components')).toBeVisible();
+    await page.locator('#todo-button').click(); const verticalEditorPromise = app.waitForEvent('window'); await page.getByRole('button', { name: '添加待办', exact: true }).click(); const verticalEditor = await verticalEditorPromise;
+    await expect(verticalEditor.locator('#text')).toBeVisible(); await verticalEditor.locator('#text').fill('竖排也可以顺畅输入'); await verticalEditor.locator('#save').click();
+    await expect(page.locator('.p-title')).toHaveText('竖排也可以顺畅输入');
+    await page.screenshot({ path: path.join(output, 'todo-vertical.png'), omitBackground: true });
+    await page.getByRole('button', { name: '删除当前待办', exact: true }).click(); await expect(page.locator('.p-title')).toHaveText('整理今天的设计稿');
+    assert.deepEqual(await page.evaluate(() => window.touchbar.getControls()), controls); assert.deepEqual(errors, []);
+    const saved = JSON.parse(fs.readFileSync(path.join(data, 'productivity.json'), 'utf8')); assert.equal(saved.focus.completed, 1); assert.equal(saved.todos.length, 1);
+    console.log(JSON.stringify({ passed: true, realDeviceWrites: false, systemNotificationsRead: false, realToasts: false, output }));
+  } finally {
+    await app?.close(); const safe = path.resolve(data); if (safe.startsWith(path.resolve(os.tmpdir()) + path.sep) && path.basename(safe).startsWith('touchbar-productivity-ui-')) fs.rmSync(safe, { recursive: true, force: true });
+  }
+})().catch(error => { console.error(error); process.exitCode = 1; });

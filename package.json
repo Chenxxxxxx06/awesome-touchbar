@@ -1,7 +1,7 @@
 {
   "name": "touch-bar-preview",
   "productName": "Touch Bar",
-  "version": "0.6.0-local.2",
+  "version": "0.9.0",
   "private": true,
   "description": "A compact Windows Touch Bar with inline volume and brightness controls.",
   "license": "MIT",
@@ -19,7 +19,11 @@
     "package:dir": "node scripts/build-native.cjs && node scripts/package-win.cjs --dir",
     "build:native": "node scripts/build-native.cjs",
     "test": "node --test tests/*.test.cjs",
-    "test:music": "node scripts/smoke-music.cjs"
+    "test:music": "node scripts/smoke-music.cjs",
+    "test:productivity": "node scripts/smoke-productivity.cjs",
+    "test:widgets": "node scripts/smoke-widgets.cjs",
+    "test:diy": "node scripts/smoke-diy.cjs",
+    "validate:community": "node scripts/validate-community.cjs"
   },
   "dependencies": {},
   "devDependencies": {
@@ -40,7 +44,8 @@
       "desktop/**",
       "assets/icon.png",
       "assets/brands/**",
-      "package.json"
+      "package.json",
+      "skills/**"
     ],
     "win": {
       "target": "portable",
@@ -60,5 +65,6 @@
         "to": "native/Media.ps1"
       }
     ]
-  }
+  },
+  "author": "Chenxxxxxx06"
 }

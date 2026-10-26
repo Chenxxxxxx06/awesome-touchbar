@@ -1,0 +1,7 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><title>自定义 Touch Bar</title><link rel="stylesheet" href="widgets-editor.css"><script src="widgets-editor.js" defer></script></head>
+<body><header><div><span class="eyebrow">MAKE IT YOURS</span><h1>你的 Touch Bar</h1></div><button id="close" aria-label="取消编辑">×</button></header>
+<main><section class="presets" aria-label="布局预设"><div id="builtins"></div><div class="custom-row"><select id="custom" aria-label="自定义预设"><option value="">已保存的布局</option></select><button id="delete" title="删除所选自定义预设" aria-label="删除所选自定义预设">−</button></div></section>
+<div class="list-heading"><span>组件</span><span>显示　 固定</span></div><p class="hint">拖动调整顺序 · 固定的组件在收起后也显示</p>
+<div id="widgets" role="list" aria-label="组件顺序"></div>
+<form id="save-preset"><input id="preset-name" maxlength="24" placeholder="给这套布局起个名字" aria-label="预设名称"><button type="submit">保存预设</button></form></main>
+<footer><p id="status" role="status">实时预览 · 完成后保存</p><div><button id="cancel">取消</button><button id="done" class="primary">完成</button></div></footer></body></html>

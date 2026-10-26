@@ -1,0 +1,100 @@
+* {
+  box-sizing: border-box;
+}
+:root {
+  color-scheme: dark;
+  font:
+    12px "Segoe UI",
+    sans-serif;
+  background: #27272b;
+  color: #e7e7ef;
+}
+body {
+  margin: 0;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  border: 1px solid #ffffff18;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  -webkit-app-region: drag;
+  color: #c0ace7;
+  font-size: 12px;
+}
+h1 {
+  font-size: 19px;
+  font-weight: 500;
+  margin: 12px 0 18px;
+}
+button,
+input,
+textarea,
+select {
+  -webkit-app-region: no-drag;
+  font: inherit;
+  border: 0;
+  outline: 0;
+  border-radius: 6px;
+}
+button {
+  background: #3d3d46;
+  color: #dddde7;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+#close {
+  background: none;
+  color: #aaa;
+  font-size: 20px;
+  padding: 0 4px;
+}
+.options {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+select,
+input {
+  min-width: 0;
+  background: #36363e;
+  color: #d9d9e6;
+  padding: 8px;
+}
+select {
+  width: 115px;
+}
+input {
+  flex: 1;
+}
+textarea {
+  resize: none;
+  min-height: 90px;
+  flex: 1;
+  background: #1d1d22;
+  color: #eeeef5;
+  padding: 12px;
+  line-height: 1.6;
+}
+textarea:focus,
+input:focus {
+  box-shadow: inset 0 0 0 1px #b7a4dc;
+}
+#status {
+  font-size: 10px;
+  color: #9898a8;
+  min-height: 14px;
+  line-height: 1.5;
+}
+footer {
+  text-align: right;
+}
+#generate {
+  background: #b8a6dd;
+  color: #292333;
+  padding: 9px 18px;
+  font-weight: 600;
+}

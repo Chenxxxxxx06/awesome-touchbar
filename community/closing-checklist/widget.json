@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "closing-checklist",
+  "name": "下班清单",
+  "description": "给今天收个尾，让明天轻松开始",
+  "icon": "check",
+  "color": "amber",
+  "kind": "checklist",
+  "config": {
+    "items": [
+      "保存今天的工作",
+      "检查重要文件备份",
+      "写下明天的第一件事"
+    ]
+  }
+}

@@ -98,7 +98,7 @@
       root = panel; onOpen = callbacks.onOpen;
       close = create('button', 'music-close', '‹'); close.type = 'button'; close.title = '收起音乐'; close.setAttribute('aria-label', '收起音乐'); close.addEventListener('click', callbacks.onClose);
       summary = create('button', 'music-summary'); summary.type = 'button'; summary.setAttribute('aria-label', '显示音乐进度');
-      const note = create('span', 'music-note', '♫'); note.setAttribute('aria-hidden', 'true');
+      const note = create('span', 'music-note'); note.setAttribute('aria-hidden', 'true'); const glyph = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); glyph.setAttribute('viewBox', '0 0 24 24'); glyph.innerHTML = '<path d="M9 4v12.2a3.5 2.6 0 1 0 2 2.3V8.3l8-1.8v7.7a3.5 2.6 0 1 0 2 2.3V1.3L9 4z"/>'; note.append(glyph);
       const text = create('span', 'music-copy'); title = create('span', 'music-title'); lyric = create('span', 'music-lyric'); text.append(title, lyric); summary.append(note, text);
       summary.addEventListener('click', () => { if (!detailed) onOpen(); else if (lyrics.status === 'offline') void loadLyrics(true); });
       progress = create('div', 'music-progress'); slider = create('input', 'music-slider'); slider.type = 'range'; slider.step = '0.1'; slider.setAttribute('aria-label', '音乐播放进度');

@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><title>待办</title><link rel="stylesheet" href="todo-editor.css"><script src="todo-editor.js" defer></script></head>
+<body><header><span id="heading">记下一件事</span><button id="cancel" aria-label="关闭编辑器" type="button">×</button></header>
+<form id="editor"><label for="text">待办事项</label><input id="text" maxlength="160" placeholder="下一件想完成的事…" autocomplete="off" required>
+<div class="reminder-row"><label for="due">提醒时间</label><button id="clear-due" type="button">不提醒</button></div><input id="due" type="datetime-local">
+<div class="quick"><button type="button" data-minutes="10">10 分钟后</button><button type="button" data-minutes="60">1 小时后</button><button type="button" data-minutes="1440">明天此时</button></div>
+<footer><span id="message" role="status">仅保存在本机</span><button id="save" type="submit">保存</button></footer></form></body></html>

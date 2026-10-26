@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#101016"/><stop offset="1" stop-color="#242032"/></linearGradient><radialGradient id="glow"><stop stop-color="#8d69ce" stop-opacity=".3"/><stop offset="1" stop-color="#8d69ce" stop-opacity="0"/></radialGradient><linearGradient id="bar" x2="0" y2="1"><stop stop-color="#34343e"/><stop offset="1" stop-color="#25252c"/></linearGradient><linearGradient id="accent"><stop stop-color="#dac4ff"/><stop offset="1" stop-color="#a5c5f0"/></linearGradient></defs>
+<rect width="1200" height="630" rx="24" fill="url(#bg)"/><ellipse cx="905" cy="160" rx="390" ry="270" fill="url(#glow)"/>
+<g font-family="Segoe UI,Arial,sans-serif"><text x="74" y="73" fill="#b4a5d1" font-size="13" letter-spacing="4">AWESOME TOUCH BAR · WINDOWS</text>
+<text x="70" y="173" fill="#f5f0ff" font-size="76" font-weight="700" letter-spacing="-3">Your bar.</text><text x="70" y="255" fill="url(#accent)" font-size="76" font-weight="700" letter-spacing="-3">Your ideas.</text>
+<text x="76" y="303" fill="#aaa2bc" font-size="20">说出一个想法，让桌面长出一个按钮。</text>
+<g transform="translate(773,104)"><rect width="330" height="124" rx="15" fill="#ffffff05" stroke="#c1a7ed30"/><text x="24" y="39" fill="#c3b1e5" font-size="12" letter-spacing="2">A LITTLE IDEA</text><text x="24" y="77" fill="#ede5fa" font-size="21">“每小时提醒我喝水。”</text><text x="24" y="105" fill="#878198" font-size="12">Codex · Claude Code · Pi</text></g>
+<rect x="55" y="363" width="1090" height="72" rx="13" fill="#000" opacity=".22"/><rect x="55" y="355" width="1090" height="72" rx="13" fill="url(#bar)" stroke="#777083" stroke-opacity=".4"/>
+<rect x="68" y="369" width="64" height="43" rx="8" fill="#42404b"/><text x="88" y="396" fill="#e6e2ec" font-size="15">esc</text><text x="155" y="397" fill="#b5acbf" font-size="23">‹</text>
+<rect x="182" y="370" width="104" height="42" rx="8" fill="#423950"/><text x="202" y="397" fill="#d6c2f3" font-size="16">✧ DIY</text>
+<rect x="298" y="370" width="567" height="42" rx="8" fill="#1b1a23" stroke="#b1a0cf" stroke-opacity=".6"/><text x="317" y="397" fill="#d5cde1" font-size="17">做一个我想用的组件…</text>
+<rect x="878" y="370" width="110" height="42" rx="8" fill="#bba7df"/><text x="899" y="397" fill="#292033" font-size="16" font-weight="600">生成 ↗</text>
+<rect x="1003" y="369" width="62" height="43" rx="8" fill="#384940"/><path d="M1034 376s-9 10-9 16a9 9 0 0 0 18 0c0-6-9-16-9-16Z" fill="none" stroke="#b7dec7" stroke-width="2"/><rect x="1037" y="362" width="34" height="15" rx="4" fill="#cd6b80"/><text x="1041" y="373" fill="white" font-size="9">NEW</text><text x="1091" y="399" fill="#b9aeca" font-size="25">⋯</text>
+<g fill="#8f859e" font-size="12" letter-spacing="1"><text x="77" y="490">01  SAY IT</text><text x="350" y="490">02  BUILD IT</text><text x="625" y="490">03  MAKE IT YOURS</text><text x="933" y="490">04  SHARE IT</text></g>
+<g stroke="#54475f"><path d="M77 510h210M350 510h210M625 510h235M933 510h190"/></g>
+<text x="77" y="543" fill="#c3b7d0" font-size="15">一个想法</text><text x="350" y="543" fill="#c3b7d0" font-size="15">生成并检查</text><text x="625" y="543" fill="#c3b7d0" font-size="15">加入你的桌面</text><text x="933" y="543" fill="#c3b7d0" font-size="15">分享给社区</text>
+<text x="77" y="595" fill="#70667f" font-size="11">DECLARATIVE WIDGETS · LOCAL STATE · YOUR AI CLI</text><text x="1074" y="595" fill="#9688aa" font-size="11">v0.9.0</text></g></svg>

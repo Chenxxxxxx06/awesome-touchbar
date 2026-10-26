@@ -63,7 +63,7 @@ const errors = [];
   try {
     fs.mkdirSync(output, { recursive: true });
     await launch();
-    await expect(page.locator('.compact-controls button')).toHaveCount(3);
+    await expect(page.locator('.compact-controls button:visible')).toHaveCount(6);
     await expect(page.locator('#components')).toBeHidden();
     await expect(page.locator('.expand')).toHaveAttribute('aria-expanded', 'false');
     await expect(page.locator('#adjustment')).toBeHidden();
@@ -290,7 +290,7 @@ const errors = [];
       finally { Menu.buildFromTemplate = original; }
       return labels;
     });
-    assert.deepEqual(menuLabels, ['长度', '退出 Touch Bar']);
+    assert.deepEqual(menuLabels, ['自定义组件…', '布局预设', '长度', '退出 Touch Bar']);
     for (const [method, value] of [['setVolume', -1], ['setVolume', 101], ['setBrightness', '50'], ['setMuted', 1]]) {
       assert.equal(await page.evaluate(async ([method, value]) => { try { await window.touchbar[method](value); return false; } catch { return true; } }, [method, value]), true, 'invalid control input is rejected');
     }

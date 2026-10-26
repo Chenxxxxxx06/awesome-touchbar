@@ -1,96 +1,145 @@
+<div align="center">
+
+![Awesome Touch Bar — Say it. Build it. Make it yours.](docs/hero.svg)
+
 # Awesome Touch Bar
 
-把熟悉的那一小条，放到 Windows 桌面上。
+**说出一个想法，让桌面长出一个按钮。**
 
-一个深灰、小圆角的桌面控制条。轻点箭头，把整条 Bar 变成你的控制台；再点一下，收回那一小条。亮度、音量和常用组件，都在鼠标旁边。
+为 Windows 做的一条小小 Touch Bar：系统控制、音乐、AI 状态、待办与专注，
+还有一个会把你的想法变成组件的 **DIY 工坊**。
 
-A compact, Apple-inspired Touch Bar for Windows, with inline volume and brightness controls, automatic edge docking, and a quiet always-on-top presence.
+[![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-9ab8ec?style=flat-square)](https://github.com/Chenxxxxxx06/awesome-touchbar/releases/latest)
+[![Release](https://img.shields.io/github/v/release/Chenxxxxxx06/awesome-touchbar?style=flat-square&color=b6a2dd)](https://github.com/Chenxxxxxx06/awesome-touchbar/releases/latest)
+[![MIT](https://img.shields.io/badge/license-MIT-a4d6bd?style=flat-square)](LICENSE)
+[![Checks](https://github.com/Chenxxxxxx06/awesome-touchbar/actions/workflows/checks.yml/badge.svg)](https://github.com/Chenxxxxxx06/awesome-touchbar/actions)
 
-![Touch Bar 默认外观示意图](docs/preview.svg)
+[**下载 Windows 便携版**](https://github.com/Chenxxxxxx06/awesome-touchbar/releases/latest) · [组件社区](community/README.md) · [开发 Skill](skills/touchbar-component/SKILL.md) · [反馈想法](https://github.com/Chenxxxxxx06/awesome-touchbar/issues/new)
 
-[下载 Windows 便携版](https://github.com/Chenxxxxxx06/awesome-touchbar/releases/latest) · [参与改进](CONTRIBUTING.md)
+</div>
 
-## 用起来
+## 从「我想要」到「我有了」
 
-下载并双击 `Touch-Bar-Windows.exe`，首次启动位于屏幕顶部中央。
+> “每小时提醒我喝水，可以暂停，使用薄荷绿图标。”
 
-- 点击箭头展开全部组件，铺满 Bar；再次点击收起。展开区包括亮度与音量加减、静音、媒体上一首／播放暂停／下一首、显示桌面、任务视图和文件管理器。
-- 放不下的组件用滚轮浏览：向上滚，组件向左（横排）或向上（竖排）移动，露出后面的内容；向下滚则返回。
-- 鼠标停在亮度、音量按钮或滑块上，向上滚增加、向下滚减少，每个标准滚轮刻度调整 2 个百分点；数值限制在 0–100%。调整音量不会自动取消静音。
-- 想在亮度／音量按钮上浏览组件，按住 Shift 再滚动；也可以将鼠标停在展开箭头上滚动。
-- 点击音量或亮度，在中间展开滑块；拖动时实时调整，显示当前数值。展开模式下关闭滑块会返回组件列表。
-- 点击静音切换状态。通过键盘或 Windows 面板改音量，组件也会同步。
-- 切换音频输出设备时，取消旧设备未执行的操作，重新打开滑块后再调节新设备。
-- Esc 先关闭滑块，再按一次收起全部组件；箭头始终可用。
-- 拖动空白区域或展开后的点状把手自由移动：顶部、底部横排，左侧、右侧竖排，图标始终正立。
-- 保持在普通应用窗口前面，失去焦点时不抢回你的输入焦点。
-- 右键只保留长度与退出；位置交给拖动。
+打开 **DIY ✧** → 选择 **Codex / Claude Code / Pi** → 使用默认模型或填入模型 ID → 输入想法 → **生成**。
 
-![展开组件示意图](docs/expanded.svg)
+![直接在 Bar 里输入想法，截图使用模拟数据](docs/images/diy-compose.png)
 
-![条内滑块示意图](docs/slider.svg)
+AI 返回组件定义，Bar 检查格式与支持能力，通过后直接加入组件区。新的图标带 **NEW**，第一次打开后消失。想改它？进入组件的 **⋯ → 修改**，继续用一句话描述；更新保留上一版，可随时回退。
 
-默认长度占当前屏幕可用宽度的 **72%**，竖排按可用高度计算。右键可选 **60% / 72% / 84%**。尺寸随 Windows 显示缩放调整，位置与长度会保存。
+![生成后的喝水计时组件，截图使用模拟数据](docs/images/diy-timer.png)
 
-启动只读取当前系统状态，**不会恢复或修改音量、静音与亮度**；这些值只在你操作对应控制时写入。媒体按钮发送 Windows 媒体快捷键，响应取决于播放器；按住 Ctrl、Alt、Shift 或 Win 时，系统快捷操作暂不执行，避免组合出意外快捷键。
+**不用重新编译，不用重启，不用先学 Electron。**
 
-## AI 工具组件
+### 现在能 DIY 什么？
 
-包含本机 AI 活动与额度快照、音乐歌词和可滚动组件。新功能先本地体验，经使用者明确要求后发布。
+| 组件 | 你可以这样说 | Bar 提供的交互 |
+| --- | --- | --- |
+| 循环 / 单次计时 | “每 45 分钟提醒我放松眼睛” | 开始、暂停、重置、到时提醒 |
+| 每日闹钟 | “每天 15:00 提醒我站起来走走” | 按 Windows 本地时间提醒、启用 / 停用 |
+| 计数器 | “记录今天喝了几杯水，最多 12 杯” | 加减、范围限制、重置 |
+| 检查清单 | “做一个下班前的三件事清单” | 勾选、保存进度 |
+| 文字卡片 | “把今天的三个重点放在这里” | 纯文本显示、滚动阅读 |
+| 快捷链接 | “做一组 GitHub 和文档入口” | 点击后在默认浏览器打开 |
 
-新版控制条厚度为 48 DIP，品牌图标、名称、状态与额度按层级排列。品牌资源来源见 [图标说明](docs/brand-assets.md)。
+这是第一版组件协议的六种能力，**不会任意运行 AI 写出的脚本**。不支持的需求会明确报错，不能把任意系统集成描述成已经实现。组件支持横排、竖排、排序、隐藏和固定；竖排输入时，可以打开旁边的完整输入框。
 
-- 点击箭头右侧的 Codex 品牌图标：中间显示本机检测到的 Codex、Claude Code、Pi 等工具，均匀排列。
-- 点击工具分区：只看该工具的近 14 天活动方格、今日／近 7 天／本地记录累计，以及两行任务摘要。
-- 返回键回到工具列表；Esc 逐层返回。横排与竖排均保持在原来的 Bar 内。
-- 额度圆环仅使用工具实际记录的额度快照；没有数据就显示未知，过期不冒充实时。新鲜快照显示低余量时，入口有一个提醒小点。
-- 本地日志能证明任务生命周期时才标运行中；仅有近期记录时显示近期活动。Token 统计只覆盖可读取的本地会话，不等于账号账单。
+## 一条 Bar，也是一套顺手的日常工具
 
-监控只读本机会话记录，不执行 AI 命令、不读取登录密钥，也不把任务内容发送到外部服务。供应商（例如 DeepSeek）与工具（例如 Pi）分别显示。
+| 日常场景 | 已有功能 |
+| --- | --- |
+| 控制电脑 | 音量、静音、内屏亮度，点击展开条内滑块；媒体快捷键、桌面、任务视图、文件管理器 |
+| 听歌 | Windows 媒体会话、歌词、进度；兼容情况取决于播放器是否暴露会话和时间轴 |
+| 关注 AI | 本机 Codex / Claude Code / Pi 活动、记录中的 Token 和可用额度快照 |
+| 安排事情 | 待办、到期提醒、专注计时、条内通知中心 |
+| 做自己的布局 | 长按编辑、拖动排序、隐藏、固定；工作 / 听歌 / 极简预设和最多 12 套自定义布局 |
+| 创造新功能 | DIY 工坊、自动校验安装、NEW 标记、更新回退、组件导入导出 |
 
-## 屏幕兼容性
+## 两分钟上手
 
-音量和静音控制 Windows 的默认音频输出设备。亮度通过 Windows 的 WMI 接口控制支持它的笔记本内屏；是否可用取决于屏幕和驱动。没有该接口时，组件会提示亮度不可用。
+1. 从 [Releases](https://github.com/Chenxxxxxx06/awesome-touchbar/releases/latest) 下载 `Touch-Bar-Windows.exe`，双击运行。
+2. 点击箭头展开组件；拖动空白处或点状把手移动 Bar。靠左 / 右侧自动竖排，图标保持正立。
+3. 长按可用图标或点击栏尾 **⋯**，选择你想保留的组件。**完成**保存，**取消 / Esc**恢复。
+4. 电脑上检测到兼容的 AI CLI 后，展开区出现 **DIY ✧**。先在对应 CLI 完成登录，再从 Bar 发送需求。
 
-本版尚未接入 DDC/CI 外接显示器控制，因此不保证能调整外接屏亮度。72% 是桌面版的布局比例，并非 Apple 硬件的实际尺寸比例。
+Bar 厚度为 **48 DIP**，长度默认占当前屏幕可用方向的 **72%**；右键可改为 60% / 72% / 84%。它随 Windows 缩放适配，并保存位置与布局。72% 是这个桌面组件的比例，不是 Apple 硬件尺寸的精确换算。
 
-## 开发与测试
+**滚轮怎么用？**
 
-开发环境需要 Windows、Node.js **22.12+**、pnpm，以及 **.NET Framework 4.8** 和其 C# 编译器。原生辅助程序使用系统框架编译，无需下载额外 NuGet 包。
+- 普通组件区域：向上滚，内容向左 / 向上移动；向下滚返回。
+- 亮度 / 音量按钮或滑块：滚轮调节，标准刻度为 2 个百分点。
+- **Shift + 滚轮**：在任何组件上都只浏览，不调节设备。
+- 所有组件已经完整显示时，不需要位移，会短暂提示“已显示全部组件”。
+
+## DIY 怎样工作
+
+```mermaid
+flowchart LR
+    A[你的想法] --> B[本机 AI CLI]
+    S[组件 Skill / 协议] --> B
+    B --> C[结构化组件定义]
+    C --> D{校验通过?}
+    D -- 是 --> E[安装到 Bar · NEW]
+    D -- 否 --> F[修正一次 / 显示原因]
+    E --> G[使用 · 修改 · 回退]
+    G --> H[自愿导出并提交社区 PR]
+```
+
+整个流程使用项目内的 [Skill](skills/touchbar-component/SKILL.md) 和 [组件协议](skills/touchbar-component/references/widget-contract.md)。无需手动安装全局 Skill：生成时会把协议提供给所选工具。
+
+- **AI 调用**：通过本机 CLI 的常规认证调用，Bar 不读取认证文件。只发送新输入、公开组件规范，以及更新时所选组件的定义；不把本机 AI 监控会话传给模型。AI 服务可能消耗你所选账户的额度。
+- **模型选择**：支持默认模型或输入实际可用的模型 ID，不虚构账户可用模型列表。Codex 的生成使用独立临时目录、只读沙箱并忽略用户工具配置；自定义供应商配置可能需要使用 Pi 或 Claude Code。
+- **能力边界**：组件是经过校验的 JSON，不含可执行 JS、Shell、HTML 或外部依赖。定时器、闹钟安装和更新后都处于未启用状态，点击开始才运行。
+- **失败处理**：格式不合格最多修正一次；支持取消与超时。失败不会安装残缺组件，也不会覆盖已有版本。首次调用验证登录与服务状态，“已安装”不等于“服务可用”。
+- **本地保存**：组件、计数、清单进度和提醒状态留在用户数据目录。最多 40 个 DIY 组件，每个定义最多 32 KB。导出只含定义，不含运行状态或提示词。
+
+真实链路验证：**Codex、Pi 已完成生成 → 校验 → 安装**。本次测试中 Claude Code 所配置的服务返回 403“服务暂停”；适配器会显示原因，服务恢复后可重试。这是该测试环境的供应商状态，不代表所有 Claude Code 用户都会遇到。
+
+## 把你的好点子放进社区
+
+从组件 **⋯ → 导出** 得到 JSON，放到 `community/<id>/widget.json`，然后提交 PR。
+
+[社区](community/README.md) 提供可直接导入的示例、校验方法与贡献流程。你可以从别人的组件开始改，也可以给喜欢的 PR 点 👍。目前使用 GitHub PR 表态，不设虚构的应用内排行榜。
+
+**默认只留在你的电脑上。分享由你决定。**
+
+## 几个真实边界
+
+- 音量操作针对默认输出设备；切换设备后旧手势不能继续写入。启动、刷新和退出都不会恢复或改动音量、静音、亮度。
+- 亮度支持 Windows WMI 可调的笔记本内屏；暂未接入 DDC/CI 外接显示器控制。
+- 音乐依赖 Windows GSMTC；网易云、QQ 音乐、Apple Music、浏览器视频等是否可控，取决于该版本播放器的媒体接口。歌词支持匹配查询与本地 LRC 导入，不保证所有播放器、所有歌曲都有同步歌词。
+- AI Token 来自可读取的本地记录，不等于账单；没有可信额度快照时显示未知，过期数据不当作实时余额。
+- 通知中心接收本应用的待办、专注、DIY 和 AI 状态提醒，不是读取所有软件的 Windows 通知。
+- 闹钟与计时需要应用运行；退出期间无法弹出提醒，重新启动后补报一次过期提醒。不会唤醒关机电脑。桌面提醒可选，且保持静音。
+
+## 开发与验证
+
+Windows、Node.js 22.12+、pnpm、.NET Framework 4.8。原生辅助程序使用系统编译器，无额外 NuGet 依赖。
 
 ```powershell
 pnpm install
 pnpm build:native
 pnpm start
+
 pnpm test
 pnpm test:desktop
+pnpm test:ai
+pnpm test:music
+pnpm test:productivity
+pnpm test:widgets
+pnpm test:diy
+pnpm validate:community
+
 pnpm package:win
 ```
 
-便携程序输出到 `release/Touch-Bar-Windows.exe`。`ui/` 负责界面，`desktop/` 负责窗口与控制桥接，`native/` 负责 Windows 音量和亮度接口。
+自动化桌面测试强制使用模拟音频、媒体、AI 数据，并使用隔离用户目录。**测试不得调整真实音量、静音或播放。**真实 AI 生成验证使用公开协议和示例需求，生成到临时目录；不作为 CI 的付费步骤。
 
-**音频测试不碰真实设备。** `pnpm test:desktop` 强制使用 `mock` 模式，滑块、滚轮、静音和组件操作测试只改变模拟状态，不发送真实媒体或窗口快捷键。`readonly` 模式可以读取实机状态，但拒绝所有控制写入；适合正在听歌时检查兼容性。
+详细贡献约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。品牌资源来源见 [图标说明](docs/brand-assets.md)。
 
-```powershell
-$env:TOUCH_BAR_CONTROLS_MODE = "readonly"
-pnpm start
-```
+## 灵感与致谢
 
-清除该环境变量后恢复默认 `live` 模式。`live` 模式也只会在明确操作控制后写入。贡献代码前请阅读[测试约定](CONTRIBUTING.md)。
+[btt-touchbar-presets](https://github.com/vas3k/btt-touchbar-presets) 的个性化工作流、[Pock](https://github.com/pock/pock) 的组件思路，以及 [TouchBarDemoApp](https://github.com/bikkelbroeders/TouchBarDemoApp) 的体验探索，为本项目提供了参考。这是面向 Windows 的独立实现，不是这些 macOS 项目的移植，也不是 Apple 官方产品。
 
-## 灵感与许可
-
-参考 [Apple Touch Bar Fundamentals](https://devstreaming-cdn.apple.com/videos/wwdc/2017/211r8euwwl9x4/211/211_touch_bar_fundamentals.pdf)、[TouchBarDemoApp](https://github.com/bikkelbroeders/TouchBarDemoApp)、[Pock](https://github.com/pock/pock) 和 [BetterTouchTool presets](https://github.com/vas3k/btt-touchbar-presets)。
-
-界面和通用控制图标独立绘制；AI 品牌图标的来源与归属见 [图标说明](docs/brand-assets.md)。不包含 Apple 系统资源，也不调用 macOS Touch Bar 接口。本项目与 Apple 无关联。代码采用 [MIT License](LICENSE)。
-
-
-## 音乐与歌词
-
-粉色音符打开音乐组件。空闲的中间区域自动显示当前歌曲和逐句歌词；点击歌词或音符后展开进度条，点击/拖动并松手才跳转。横排与竖排共用 48 DIP 外框。多个媒体会话可用下拉按钮切换，Esc 收起。
-
-兼容范围：Windows 10 1809 及以上的系统媒体会话（GSMTC）。播放器必须向 Windows 发布歌曲信息，且开放进度控制才能跳转；不能承诺所有音乐软件或网页都支持。没有时长、直播或不允许跳转时禁用进度条。组件不自动播放、暂停、切歌或改变音量。
-
-Windows 不提供统一歌词接口。组件只把歌曲名称、歌手、专辑和时长发送至 LRCLIB 匹配同步歌词，不发送账号或 AI 数据。同一歌曲缓存一小时，网络失败显示提示。缺词、版本不匹配或只有无时间戳歌词时不会假装同步；可点 LRC 导入 UTF-8 本地时间戳歌词，按歌曲保存在本机应用数据目录的 music-lyrics 文件夹。导入后优先使用本地歌词。
-
-资料：[Windows 媒体会话接口](https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssession)、[LRCLIB API](https://lrclib.net/docs)。测试使用模拟播放器与歌词，不操作真实音乐。
+MIT · Made for a desktop that feels a little more yours.

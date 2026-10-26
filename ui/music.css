@@ -32,3 +32,12 @@ body[data-orientation="vertical"] .music-slider::-webkit-slider-runnable-track {
 body[data-orientation="vertical"] .music-slider::-webkit-slider-thumb { margin-top: 0; margin-left: -3px; }
 body[data-orientation="vertical"] .music-time { font-size: 8px; line-height: 11px; width: 32px; text-align: center; margin-top: 4px; }
 body[data-orientation="vertical"] .music-import, body[data-orientation="vertical"] .music-close, body[data-orientation="vertical"] .music-source { flex-shrink: 0; }
+
+#music-panel { max-width: 960px; gap: 10px; }
+.music-note svg { width: 21px; height: 21px; fill: currentColor; display: block; }
+.music-title { color: #9999a5; font-size: 9px; }
+.music-lyric { font-size: 13px; font-weight: 500; }
+.music-summary { padding: 2px 8px; background: linear-gradient(90deg, #ffffff04, transparent); border-radius: 6px; }
+.music-time { color: #9999a5; }
+body[data-orientation="vertical"] .music-summary { padding: 3px 2px; }
+.key.music-launch { color: #e8a9bd; }

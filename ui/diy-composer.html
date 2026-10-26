@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <title>DIY 组件</title>
+    <link rel="stylesheet" href="diy-composer.css" />
+    <script src="diy-composer.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <span>✧ DIY 工坊</span
+      ><button id="close" aria-label="关闭输入框">×</button>
+    </header>
+    <h1>让想法，变成一个按钮。</h1>
+    <div class="options">
+      <select id="tool" aria-label="AI 工具"></select
+      ><input
+        id="model"
+        aria-label="模型 ID，留空使用默认模型"
+        placeholder="模型：默认 / 填 ID"
+        maxlength="120"
+      />
+    </div>
+    <textarea
+      id="request"
+      aria-label="组件需求"
+      maxlength="4000"
+      placeholder="比如：每天 15:00 提醒我站起来活动一下。"
+    ></textarea>
+    <p id="status" role="status">只发送本次需求和组件规范 · 不读取会话记录</p>
+    <footer><button id="generate">生成组件 ↗</button></footer>
+  </body>
+</html>

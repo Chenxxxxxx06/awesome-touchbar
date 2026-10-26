@@ -1,0 +1,23 @@
+/* The strip stays 48 DIP; customization changes its contents, not its shell. */
+.control-strip { max-width: 55%; }
+.compact-controls { min-width: 0; max-width: 370px; overflow: auto hidden; scrollbar-width: none; overscroll-behavior: contain; -webkit-app-region: no-drag; }
+.touch-bar .control-strip .compact-controls { display: flex; }
+.compact-controls > [data-widget] { flex: 0 0 36px; width: 36px; min-width: 36px; position: relative; }
+.compact-controls > [data-widget] svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.compact-controls > .music-launch svg { fill: currentColor; stroke: none; }
+.compact-controls .speaker, .compact-controls .solid-symbol { fill: currentColor; stroke: none; }
+#customize-button { flex: 0 0 22px; width: 22px; height: 30px; background: transparent; border-radius: 5px; color: #8e8e9a; font-size: 19px; }
+#customize-button:hover { color: #e3e3eb; background: #ffffff0a; }
+body[data-widget-editing="true"] #customize-button { background: #a7bbdf; color: #222733; font-size: 15px; }
+body[data-widget-editing="true"] .touch-bar { border-color: #9fb7e266; }
+body[data-widget-editing="true"] [data-widget] { cursor: grab; box-shadow: inset 0 0 0 1px #ffffff20; touch-action: none; }
+body[data-widget-editing="true"] [data-widget-hidden="true"] { opacity: .35; }
+body[data-widget-editing="true"] [data-widget-pinned="true"]::before { content: ''; position: absolute; width: 3px; height: 3px; background: #b1c6eb; border-radius: 50%; bottom: 2px; left: calc(50% - 1.5px); }
+body[data-widget-editing="true"] [data-dragging="true"] { cursor: grabbing; background: #536078; opacity: .9; }
+body[data-orientation="vertical"] .control-strip { max-width: none; max-height: 52%; min-height: 0; }
+body[data-orientation="vertical"] .compact-controls { width: 32px; max-height: 290px; overflow: hidden auto; flex-shrink: 1; }
+body[data-orientation="vertical"] .compact-controls > [data-widget] { width: 32px; min-width: 32px; height: 36px; flex: 0 0 36px; }
+body[data-orientation="vertical"] #customize-button { width: 32px; height: 22px; flex: 0 0 22px; }
+
+
+.component-viewport[data-scroll-hint="已显示全部组件"]::after { content: attr(data-scroll-hint); position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); pointer-events: none; background: #202026ed; color: #c8c8d5; padding: 5px 12px; border: 1px solid #ffffff16; border-radius: 5px; font-size: 10px; white-space: nowrap; }

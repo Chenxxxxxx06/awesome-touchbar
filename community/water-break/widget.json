@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "water-break",
+  "name": "喝水提醒",
+  "description": "每 60 分钟休息一下，喝一杯水",
+  "icon": "drop",
+  "color": "mint",
+  "kind": "timer",
+  "config": {
+    "minutes": 60,
+    "repeat": true
+  }
+}

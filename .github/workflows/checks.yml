@@ -20,3 +20,5 @@ jobs:
       - run: pnpm test
         env:
           TOUCH_BAR_CONTROLS_MODE: mock
+
+      - run: pnpm validate:community

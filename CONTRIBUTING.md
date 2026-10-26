@@ -24,3 +24,10 @@
 不要提交 `node_modules/`、`native/bin/`、`release/`、运行配置目录、个人日志、账户信息、访问令牌或其他秘密。截图请只保留组件，避开私人桌面内容。
 
 源码采用 MIT 许可。提交代码时保留已有版权与许可说明。
+
+
+## DIY 组件贡献
+
+仅贡献一个组件时，无需修改 Electron 源码。按 [组件 Skill](skills/touchbar-component/SKILL.md) 生成定义，放到 `community/<id>/widget.json`，运行 `pnpm validate:community`。提供说明和模拟数据截图即可。禁止把真实 AI 会话、认证文件、使用记录或付费 API 凭据提交到仓库。
+
+修改 DIY 引擎时，运行 `pnpm test:diy` 和 `pnpm test:widgets`。生成只发送新需求、组件协议与所选组件定义；监控功能仍保持本地只读。AI CLI 登录由用户自己的 CLI 管理，主程序不读取认证文件。组件能力必须由 schema、运行服务和 UI 一起实现，不能在 JSON 中放入未经支持的代码字段。
